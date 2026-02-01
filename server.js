@@ -43,12 +43,16 @@ fastify.post('/api/search', async (request, reply) => {
     const resultsArray = await Promise.all(promises);
     let flattenedResults = resultsArray.flat();
 
-    // 2. Fallback Yandex si aucun résultat
-    if (flattenedResults.length === 0) {
-        console.log("Aucun résultat interne. Lancement du Fallback Yandex...");
+    // 2. Fallback Yandex Élargi
+    // Si on a peu de résultats (ex: Anime-Sama trouve un truc vague mais pas la série cherchée)
+    // On lance la recherche large pour compléter.
+    if (flattenedResults.length < 5) {
+        console.log(`Résultats internes insuffisants (${flattenedResults.length}). Lancement de l'extension Yandex...`);
         try {
             const yandexResults = await yandex.searchAnime(query);
             const taggedYandex = yandexResults.map(r => ({ ...r, provider: 'yandex' }));
+            
+            // On ajoute les résultats Yandex à la suite
             flattenedResults = flattenedResults.concat(taggedYandex);
         } catch (e) {
             console.error("Erreur Yandex:", e);

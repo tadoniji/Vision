@@ -35,8 +35,8 @@ async function searchAnime(query) {
     const results = [];
 
     try {
-        // Recherche Yandex
-        const searchUrl = `https://yandex.com/search/?text=${encodeURIComponent(query + " stream libre")}`;
+        // Recherche Yandex (Mots clés optimisés)
+        const searchUrl = `https://yandex.com/search/?text=${encodeURIComponent(query + " stream gratuit french")}`;
         await page.goto(searchUrl);
         
         // Attente chargement
@@ -46,6 +46,7 @@ async function searchAnime(query) {
         const items = await page.evaluate(() => {
             const extracted = [];
             const elements = document.querySelectorAll('.serp-item');
+            const REQUIRED_KEYWORDS = ['french', 'stream', 'film', 'movie', 'vostfr', 'vf', 'streaming', 'gratuit', 'complet', 'voir', 'regarder', 'serie', 'anime'];
             
             elements.forEach(el => {
                 const titleEl = el.querySelector('h2, .organic__title-wrapper');
@@ -54,19 +55,25 @@ async function searchAnime(query) {
                 if (titleEl && linkEl) {
                     const title = titleEl.innerText.trim();
                     const url = linkEl.href;
+                    const lowerText = (title + " " + url).toLowerCase();
                     
-                    // Filtrer les résultats non pertinents (Yandex video, images, etc internes)
-                    if (url.startsWith('http') && !url.includes('yandex.com') && !url.includes('ya.ru')) {
+                    // Filtrage 1: Exclure Yandex interne
+                    const isExternal = url.startsWith('http') && !url.includes('yandex.com') && !url.includes('ya.ru');
+                    
+                    // Filtrage 2: Pertinence (Doit contenir au moins un mot clé de streaming)
+                    const isRelevant = REQUIRED_KEYWORDS.some(k => lowerText.includes(k));
+
+                    if (isExternal && isRelevant) {
                         extracted.push({
                             title: `[Ext] ${title}`,
-                            slug: url, // Pour Yandex, le slug EST l'URL cible
+                            slug: url, 
                             url: url,
-                            image: 'https://yastatic.net/s3/home/logos/share/share-logo_ru.png' // Placeholder Yandex
+                            image: 'https://yastatic.net/s3/home/logos/share/share-logo_ru.png' 
                         });
                     }
                 }
             });
-            return extracted.slice(0, 5); // Top 5 seulement pour le fallback
+            return extracted.slice(0, 10); // On en prend un peu plus comme on filtre
         });
 
         results.push(...items);

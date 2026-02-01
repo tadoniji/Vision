@@ -116,13 +116,26 @@ async function fetchEpisodes(url) {
             // Traitement IFrames
             iframes.forEach((iframe, i) => {
                 let src = iframe.src || iframe.getAttribute('data-src');
-                if (src && src.startsWith('http') && !src.includes('google') && !src.includes('facebook') && !src.includes('amazon')) {
-                    eps.push({
-                        season: "Source Externe",
-                        episode: i + 1,
-                        type: "Unknown",
-                        providers: [{ name: `Stream ${i+1} (Iframe)`, url: src }]
-                    });
+                
+                if (src && src.startsWith('http')) {
+                    try {
+                        const urlObj = new URL(src);
+                        // Filtre: Ignorer les domaines racines (ex: https://uptobox.com/) sans slug
+                        const isRoot = urlObj.pathname === '/' || urlObj.pathname === '';
+                        // Filtre: Pubs/Trackers connus
+                        const isAd = src.includes('google') || src.includes('facebook') || src.includes('amazon') || src.includes('cloudflare');
+
+                        if (!isRoot && !isAd) {
+                            eps.push({
+                                season: "Source Externe",
+                                episode: i + 1,
+                                type: "Unknown",
+                                providers: [{ name: `Stream ${i+1} (Iframe)`, url: src }]
+                            });
+                        }
+                    } catch (e) {
+                        // URL invalide, on ignore
+                    }
                 }
             });
 
@@ -130,12 +143,19 @@ async function fetchEpisodes(url) {
             videos.forEach((video, i) => {
                 let src = video.src || video.currentSrc;
                 if (src && src.startsWith('http')) {
-                    eps.push({
-                        season: "Source Externe",
-                        episode: i + 1 + iframes.length,
-                        type: "Direct",
-                        providers: [{ name: `Stream ${i+1} (Video)`, url: src }]
-                    });
+                     try {
+                        const urlObj = new URL(src);
+                        const isRoot = urlObj.pathname === '/' || urlObj.pathname === '';
+                        
+                        if (!isRoot) {
+                            eps.push({
+                                season: "Source Externe",
+                                episode: i + 1 + iframes.length,
+                                type: "Direct",
+                                providers: [{ name: `Stream ${i+1} (Video)`, url: src }]
+                            });
+                        }
+                    } catch (e) {}
                 }
             });
 

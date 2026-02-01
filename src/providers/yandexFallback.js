@@ -3,7 +3,79 @@ const tmdb = require('../services/tmdb');
 
 const BROWSER_ARGS = [
     '--disable-blink-features=AutomationControlled',
-// ... (reste du code inchangé jusqu'à la fin du try catch de recherche)
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-infobars',
+    '--window-position=0,0',
+    '--ignore-certifcate-errors',
+    '--ignore-certifcate-errors-spki-list',
+    '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+];
+
+async function getBrowser() {
+    return await chromium.launch({ 
+        headless: true, 
+        args: BROWSER_ARGS
+    });
+}
+
+async function searchAnime(query) {
+    console.log(`[Yandex Fallback] Searching for: ${query} stream gratuit`);
+    const browser = await getBrowser();
+    const context = await browser.newContext({
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        locale: 'fr-FR'
+    });
+    
+    // Anti-detection
+    await context.addInitScript(() => {
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+    });
+
+    const page = await context.newPage();
+    const results = [];
+
+    try {
+        // Recherche Yandex (Mots clés optimisés)
+        const searchUrl = `https://yandex.com/search/?text=${encodeURIComponent(query + " stream gratuit french")}`;
+        await page.goto(searchUrl);
+        
+        // Attente chargement
+        await page.waitForTimeout(2000);
+
+        // Extraction résultats
+        const items = await page.evaluate(() => {
+            const extracted = [];
+            const elements = document.querySelectorAll('.serp-item');
+            const REQUIRED_KEYWORDS = ['french', 'stream', 'film', 'movie', 'vostfr', 'vf', 'streaming', 'gratuit', 'complet', 'voir', 'regarder', 'serie', 'anime'];
+            
+            elements.forEach(el => {
+                const titleEl = el.querySelector('h2, .organic__title-wrapper');
+                const linkEl = el.querySelector('a.organic__url, a');
+                
+                if (titleEl && linkEl) {
+                    const title = titleEl.innerText.trim();
+                    const url = linkEl.href;
+                    const lowerText = (title + " " + url).toLowerCase();
+                    
+                    // Filtrage 1: Exclure Yandex interne
+                    const isExternal = url.startsWith('http') && !url.includes('yandex.com') && !url.includes('ya.ru');
+                    
+                    // Filtrage 2: Pertinence (Doit contenir au moins un mot clé de streaming)
+                    const isRelevant = REQUIRED_KEYWORDS.some(k => lowerText.includes(k));
+
+                    if (isExternal && isRelevant) {
+                        extracted.push({
+                            title: `[Ext] ${title}`,
+                            slug: url, 
+                            url: url,
+                            image: 'https://yastatic.net/s3/home/logos/share/share-logo_ru.png' 
+                        });
+                    }
+                }
+            });
+            return extracted.slice(0, 10);
+        });
 
         results.push(...items);
         console.log(`[Yandex] Found ${results.length} results.`);
@@ -27,6 +99,7 @@ const BROWSER_ARGS = [
 
     return results;
 }
+
 // Extracteur Générique : Visite le site et cherche des IFrames/Videos
 async function fetchEpisodes(url) {
     console.log(`[Yandex (Generic)] Crawling external site: ${url}`);
@@ -80,11 +153,9 @@ async function fetchEpisodes(url) {
             });
 
             // 2. Détection des Liens d'épisodes (Crawling de liste)
-            // On cherche des liens qui contiennent "episode", "ep ", "e01", etc.
             const links = document.querySelectorAll('a');
             let currentSeason = "Saison Inconnue";
             
-            // Regex simplifiée pour détecter une saison dans un titre précédent
             const seasonRegex = /(saison|season)\s*(\d+)/i;
 
             links.forEach(a => {
@@ -93,17 +164,12 @@ async function fetchEpisodes(url) {
                 
                 if (!href || href === window.location.href || href.includes('javascript') || href.includes('#')) return;
 
-                // Est-ce un lien d'épisode ?
-                // Ex: "Episode 1", "E1", "1x01"
                 const epMatch = text.match(/(?:episode|ep)\s*(\d+)|e(\d+)|(\d+)x(\d+)/i);
                 
                 if (epMatch) {
-                    // Essayer de trouver la saison dans les éléments précédents (h1, h2, h3, ou parent)
-                    // C'est une heuristique "Best Effort"
                     let prev = a.parentElement;
                     let foundSeason = null;
                     
-                    // Remonter un peu et chercher des headers
                     for(let k=0; k<5; k++) {
                         if(!prev) break;
                         if(prev.previousElementSibling) {
@@ -117,10 +183,8 @@ async function fetchEpisodes(url) {
                         prev = prev.parentElement;
                     }
                     
-                    // Si on a trouvé une saison proche, on met à jour
                     if(foundSeason) currentSeason = foundSeason;
 
-                    // Numéro épisode
                     const epNum = epMatch[1] || epMatch[2] || epMatch[4];
                     
                     eps.push({

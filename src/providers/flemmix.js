@@ -25,41 +25,52 @@ function cleanTitle(text) {
 }
 
 async function performSearch(page, query) {
-    console.log(`[Flemmix] Navigation vers recherche: ${query}`);
-    await page.goto(`https://flemmix.irish/?s=${encodeURIComponent(query)}`);
+    console.log(`[Flemmix] Navigation vers l'accueil pour recherche POST: ${query}`);
+    await page.goto('https://flemmix.irish/');
     
-    // Attente intelligente : soit les résultats, soit le message "aucun résultat"
+    // Attente du champ de recherche
     try {
-        await page.waitForFunction(() => {
-            // Si Cloudflare est là
-            if (document.title.includes('Just a moment') || document.title.includes('Un instant')) return false;
-            // Si la page est chargée (présence de body)
-            return !!document.body;
-        }, { timeout: 15000 });
+        await page.waitForSelector('input[name="story"]', { timeout: 15000 });
     } catch (e) {
-        console.log("Timeout waiting for page load, continuing anyway to inspect DOM...");
+        console.log("Champ de recherche non trouvé (Cloudflare ou structure changée?)");
+        return [];
     }
+
+    // Remplissage et soumission
+    await page.fill('input[name="story"]', query);
+    await page.press('input[name="story"]', 'Enter');
+    
+    // Attente des résultats
+    console.log("[Flemmix] Attente des résultats...");
+    await page.waitForLoadState('networkidle'); 
 
     // Extraction générique
     return await page.evaluate(() => {
         const items = [];
-        // Sélecteurs larges pour attraper n'importe quel type de grille de résultats WordPress
-        const candidates = document.querySelectorAll('article, .result-item, .movie-poster, .item, .post');
+        // Sélecteurs larges pour attraper n'importe quel type de grille de résultats
+        // Sur DLE (DataLife Engine, que ce site semble utiliser), c'est souvent .short-story ou .movie
+        const candidates = document.querySelectorAll('article, .result-item, .movie-poster, .item, .post, .short-story, .short');
         
         candidates.forEach(el => {
             const link = el.querySelector('a');
             const img = el.querySelector('img');
             // Essayer plusieurs endroits pour le titre
-            const titleEl = el.querySelector('h1, h2, h3, .title, .name'); 
+            const titleEl = el.querySelector('h1, h2, h3, .title, .name, .poster-title'); 
             
             if (link && titleEl) {
                 let imgUrl = img ? (img.getAttribute('data-src') || img.src) : null;
                 
+                // Correction URL relative
+                let href = link.href;
+                if (!href.startsWith('http')) {
+                    href = window.location.origin + href;
+                }
+
                 items.push({
                     title: titleEl.innerText.trim(),
-                    slug: link.href, // URL complète
+                    slug: href, // URL complète
                     image: imgUrl,
-                    url: link.href
+                    url: href
                 });
             }
         });
@@ -77,7 +88,6 @@ async function searchAnime(query) {
         timezoneId: 'Europe/Paris'
     });
     
-    // Injection de script pour masquer webdriver (Anti-detection supplémentaire)
     await context.addInitScript(() => {
         Object.defineProperty(navigator, 'webdriver', {
             get: () => undefined,
@@ -87,38 +97,17 @@ async function searchAnime(query) {
     const page = await context.newPage();
 
     try {
-        // 1. Essai Recherche Exacte
+        // Recherche via le formulaire
         let results = await performSearch(page, query);
 
-        // 2. Si 0 résultat, on tente une recherche Google ciblée (Fallback)
-        if (results.length === 0) {
-            console.log(`[Flemmix] Recherche interne vide. Tentative via Google...`);
-            await page.goto(`https://www.google.com/search?q=site:flemmix.irish+${encodeURIComponent(query)}`);
-            await page.waitForTimeout(2000); // Attente chargement Google
-
-            // Extraction résultats Google
-            const googleResults = await page.evaluate(() => {
-                const items = [];
-                // Sélecteurs Google standards (peuvent changer, mais souvent stables pour les titres/liens)
-                const gElements = document.querySelectorAll('.g'); // Classe générique des résultats
-                
-                gElements.forEach(el => {
-                    const link = el.querySelector('a');
-                    const title = el.querySelector('h3');
-                    
-                    if (link && title && link.href.includes('flemmix.irish')) {
-                        items.push({
-                            title: title.innerText.replace(' - Flemmix', '').trim(),
-                            slug: link.href,
-                            image: null, // Google ne donne pas facilement l'image
-                            url: link.href
-                        });
-                    }
-                });
-                return items;
-            });
-            
-            results = googleResults;
+        // Si 0 résultat et que la query a plusieurs mots, on essaie avec le dernier mot
+        if (results.length === 0 && query.includes(' ')) {
+            const words = query.split(' ');
+            const simpleQuery = words[words.length - 1]; // "Lorax"
+            if (simpleQuery.length > 3) {
+                console.log(`[Flemmix] Aucun résultat exact. Tentative avec : "${simpleQuery}"`);
+                results = await performSearch(page, simpleQuery);
+            }
         }
 
         console.log(`[Flemmix] Found ${results.length} results.`);

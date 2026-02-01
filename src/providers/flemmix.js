@@ -90,14 +90,35 @@ async function searchAnime(query) {
         // 1. Essai Recherche Exacte
         let results = await performSearch(page, query);
 
-        // 2. Si 0 résultat et que la query a plusieurs mots, on essaie avec le dernier mot (souvent le plus significatif, ex: "Le Lorax" -> "Lorax")
-        if (results.length === 0 && query.includes(' ')) {
-            const words = query.split(' ');
-            const simpleQuery = words[words.length - 1]; // "Lorax"
-            if (simpleQuery.length > 3) {
-                console.log(`[Flemmix] Aucun résultat exact. Tentative avec : "${simpleQuery}"`);
-                results = await performSearch(page, simpleQuery);
-            }
+        // 2. Si 0 résultat, on tente une recherche Google ciblée (Fallback)
+        if (results.length === 0) {
+            console.log(`[Flemmix] Recherche interne vide. Tentative via Google...`);
+            await page.goto(`https://www.google.com/search?q=site:flemmix.irish+${encodeURIComponent(query)}`);
+            await page.waitForTimeout(2000); // Attente chargement Google
+
+            // Extraction résultats Google
+            const googleResults = await page.evaluate(() => {
+                const items = [];
+                // Sélecteurs Google standards (peuvent changer, mais souvent stables pour les titres/liens)
+                const gElements = document.querySelectorAll('.g'); // Classe générique des résultats
+                
+                gElements.forEach(el => {
+                    const link = el.querySelector('a');
+                    const title = el.querySelector('h3');
+                    
+                    if (link && title && link.href.includes('flemmix.irish')) {
+                        items.push({
+                            title: title.innerText.replace(' - Flemmix', '').trim(),
+                            slug: link.href,
+                            image: null, // Google ne donne pas facilement l'image
+                            url: link.href
+                        });
+                    }
+                });
+                return items;
+            });
+            
+            results = googleResults;
         }
 
         console.log(`[Flemmix] Found ${results.length} results.`);
@@ -114,11 +135,10 @@ async function searchAnime(query) {
 async function fetchEpisodes(url) {
     console.log(`[Flemmix (Stealth)] Fetching episodes for: ${url}`);
     
-    // Correction URL si besoin (bien que searchAnime renvoie l'absolue)
     if (!url.startsWith('http')) {
         url = `https://flemmix.irish/${decodeURIComponent(url)}`;
     } else {
-        url = decodeURIComponent(url); // Au cas où elle a été encodée deux fois
+        url = decodeURIComponent(url);
     }
 
     const browser = await getBrowser();
@@ -129,18 +149,25 @@ async function fetchEpisodes(url) {
 
     try {
         await page.goto(url);
-        // Attente anti-cloudflare
-        await page.waitForTimeout(2000); 
+        
+        // Gestion Cloudflare éventuelle
+        try {
+            await page.waitForFunction(() => !document.title.includes('Just a moment') && !document.title.includes('Un instant'), { timeout: 10000 });
+        } catch(e) {}
+        
+        await page.waitForTimeout(2000);
 
-        // Extraction des IFrames
+        // Extraction ciblée des lecteurs
         const episodes = await page.evaluate(() => {
             const eps = [];
-            const iframes = document.querySelectorAll('iframe');
+            
+            // 1. Chercher les Iframes dans les boites vidéos identifiées (.video-box, .entry-content)
+            const iframes = Array.from(document.querySelectorAll('.video-box iframe, .entry-content iframe, iframe'));
             
             iframes.forEach((iframe, index) => {
                 const src = iframe.getAttribute('data-src') || iframe.src;
                 
-                // Filtrage basique des pubs
+                // Filtrage
                 if (src && !src.includes('google') && !src.includes('facebook') && !src.includes('cloudflare')) {
                     eps.push({
                         season: "Film/Série",
@@ -150,6 +177,7 @@ async function fetchEpisodes(url) {
                     });
                 }
             });
+
             return eps;
         });
 

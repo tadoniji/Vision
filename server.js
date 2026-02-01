@@ -10,13 +10,25 @@ const { getHistory, addToHistory } = require('./src/historyManager');
 
 const PROVIDERS = {
     'anime-sama': animeSama,
-// ... (code existant)
+    'flemmix': flemmix,
+    'yandex': yandex
+};
 
-// Route API : Historique
+// Activer CORS
+fastify.register(cors);
+
+// Servir les fichiers statiques
+fastify.register(require('@fastify/static'), {
+  root: path.join(__dirname, 'public'),
+  prefix: '/', 
+});
+
+// Route API : Historique (Lecture)
 fastify.get('/api/history', async (request, reply) => {
     return getHistory();
 });
 
+// Route API : Historique (Écriture)
 fastify.post('/api/history', async (request, reply) => {
     const entry = request.body;
     if (!entry || !entry.slug || !entry.episode) {
@@ -49,8 +61,6 @@ fastify.post('/api/search', async (request, reply) => {
     let flattenedResults = resultsArray.flat();
 
     // 2. Fallback Yandex Élargi
-    // Si on a peu de résultats (ex: Anime-Sama trouve un truc vague mais pas la série cherchée)
-    // On lance la recherche large pour compléter.
     if (flattenedResults.length < 5) {
         console.log(`Résultats internes insuffisants (${flattenedResults.length}). Lancement de l'extension Yandex...`);
         try {

@@ -104,7 +104,6 @@ async function searchAnime(query) {
 async function fetchEpisodes(url) {
     console.log(`[Yandex (Generic)] Crawling external site: ${url}`);
     
-    // Décodage si nécessaire
     if (!url.startsWith('http')) {
         url = decodeURIComponent(url);
     }
@@ -123,7 +122,6 @@ async function fetchEpisodes(url) {
             const eps = [];
             const baseUrl = window.location.origin;
 
-            // Helper pour absolu
             const toAbs = (link) => {
                 if (!link) return null;
                 if (link.startsWith('http')) return link;
@@ -154,49 +152,78 @@ async function fetchEpisodes(url) {
 
             // 2. Détection des Liens d'épisodes (Crawling de liste)
             const links = document.querySelectorAll('a');
-            let currentSeason = "Saison Inconnue";
+            const pageTitle = document.title;
+            let globalSeason = "Saison Inconnue";
             
+            const titleSeasonMatch = pageTitle.match(/(?:saison|season)\s*(\d+)/i);
+            if (titleSeasonMatch) globalSeason = "Saison " + titleSeasonMatch[1];
+
             const seasonRegex = /(saison|season)\s*(\d+)/i;
+            const strictEpRegex = /(?:episode|ep|épisode)\s*(\d+)|e(\d+)|(\d+)x(\d+)|s\d+e(\d+)/i;
+            const numberRegex = /^(\d{1,3})$/;
 
             links.forEach(a => {
                 const text = a.innerText.trim();
+                const titleAttr = a.getAttribute('title') || "";
+                const fullText = (text + " " + titleAttr).trim();
                 const href = toAbs(a.getAttribute('href'));
                 
                 if (!href || href === window.location.href || href.includes('javascript') || href.includes('#')) return;
 
-                const epMatch = text.match(/(?:episode|ep)\s*(\d+)|e(\d+)|(\d+)x(\d+)/i);
-                
+                let epNum = null;
+                let currentSeason = globalSeason;
+
+                const epMatch = fullText.match(strictEpRegex);
                 if (epMatch) {
+                    epNum = epMatch[1] || epMatch[2] || epMatch[4] || epMatch[5];
+                } 
+                else if (numberRegex.test(text)) {
+                    if (href.toLowerCase().match(/episode|ep\.|ep-|\/e\d+/)) {
+                        epNum = text;
+                    } 
+                    else if (a.parentElement.className.match(/episode|saison|season/i)) {
+                        epNum = text;
+                    }
+                    else {
+                        epNum = text;
+                    }
+                }
+
+                if (epNum) {
                     let prev = a.parentElement;
                     let foundSeason = null;
-                    
-                    for(let k=0; k<5; k++) {
+                    for(let k=0; k<3; k++) {
                         if(!prev) break;
-                        if(prev.previousElementSibling) {
-                            const sibText = prev.previousElementSibling.innerText || "";
-                            const sMatch = sibText.match(seasonRegex);
-                            if(sMatch) {
-                                foundSeason = "Saison " + sMatch[2];
-                                break;
-                            }
+                        const sMatch = (prev.innerText || "").match(seasonRegex);
+                        if(sMatch) {
+                            foundSeason = "Saison " + sMatch[2];
+                            break;
                         }
                         prev = prev.parentElement;
                     }
-                    
                     if(foundSeason) currentSeason = foundSeason;
 
-                    const epNum = epMatch[1] || epMatch[2] || epMatch[4];
-                    
                     eps.push({
                         season: currentSeason,
                         episode: parseInt(epNum),
                         type: "Lien",
-                        providers: [{ name: "Ouvrir Lien", url: href }]
+                        providers: [{ name: "Ouvrir Page Épisode", url: href }]
                     });
                 }
             });
 
-            return eps;
+            // Nettoyage des doublons (Même URL)
+            const uniqueEps = [];
+            const seenUrls = new Set();
+            eps.forEach(e => {
+                const u = e.providers[0].url;
+                if(!seenUrls.has(u)) {
+                    seenUrls.add(u);
+                    uniqueEps.push(e);
+                }
+            });
+
+            return uniqueEps.sort((a,b) => a.episode - b.episode);
         });
 
         console.log(`[Yandex] Extracted ${episodes.length} streams/links from ${url}`);

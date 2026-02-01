@@ -6,20 +6,25 @@ const cors = require('@fastify/cors');
 const animeSama = require('./src/providers/animeSama');
 const flemmix = require('./src/providers/flemmix');
 const yandex = require('./src/providers/yandexFallback');
+const { getHistory, addToHistory } = require('./src/historyManager');
 
 const PROVIDERS = {
     'anime-sama': animeSama,
-    'flemmix': flemmix,
-    'yandex': yandex
-};
+// ... (code existant)
 
-// Activer CORS
-fastify.register(cors);
+// Route API : Historique
+fastify.get('/api/history', async (request, reply) => {
+    return getHistory();
+});
 
-// Servir les fichiers statiques
-fastify.register(require('@fastify/static'), {
-  root: path.join(__dirname, 'public'),
-  prefix: '/', 
+fastify.post('/api/history', async (request, reply) => {
+    const entry = request.body;
+    if (!entry || !entry.slug || !entry.episode) {
+        return reply.status(400).send({ error: "Données incomplètes" });
+    }
+    
+    addToHistory(entry);
+    return { success: true };
 });
 
 // Route API : Recherche Multi-Sources

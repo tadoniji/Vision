@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vision - Prototype</title>
+    <title>Vision - Prototype v1.2</title>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -11,6 +11,7 @@
             --text-color: #e2e8f0;
             --accent-color: #38bdf8;
             --accent-hover: #0ea5e9;
+            --seen-color: #22c55e;
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -69,6 +70,7 @@
             cursor: pointer;
             transition: transform 0.2s, border-color 0.2s;
             border: 2px solid transparent;
+            position: relative;
         }
         .search-card:hover {
             transform: translateY(-5px);
@@ -84,6 +86,17 @@
             font-size: 0.9em;
             text-align: center;
             font-weight: bold;
+        }
+        .provider-tag {
+            position: absolute; 
+            top: 5px; 
+            right: 5px; 
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7em;
+            text-transform: uppercase;
         }
 
         /* Episode List Grid */
@@ -103,7 +116,23 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
+            position: relative;
         }
+        .episode-card.seen {
+            border-color: var(--seen-color);
+            opacity: 0.8;
+        }
+        .seen-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: var(--seen-color);
+            font-weight: bold;
+            font-size: 0.8em;
+            display: none;
+        }
+        .episode-card.seen .seen-badge { display: block; }
+
         .episode-header {
             font-size: 0.9em;
             color: #94a3b8;
@@ -120,84 +149,160 @@
             gap: 5px;
             margin-top: auto;
         }
-        .provider-tag {
+        .play-btn {
             background-color: #334155;
             color: #cbd5e1;
-            padding: 4px 8px;
+            padding: 6px 10px;
             border-radius: 4px;
-            font-size: 0.8em;
-            text-decoration: none;
-            transition: 0.2s;
+            font-size: 0.85em;
+            cursor: pointer;
+            text-align: center;
+            border: none;
+            flex: 1;
         }
-        .provider-tag:hover {
+        .play-btn:hover {
             background-color: var(--accent-color);
             color: #000;
         }
-        .loading { text-align: center; color: var(--accent-color); margin-top: 20px; display: none;}
-        
-        .debug-info {
-            width: 100%;
-            max-width: 1000px;
-            margin-bottom: 20px;
-            background: #1e293b;
-            padding: 10px;
-            border-radius: 8px;
-            font-family: monospace;
-            font-size: 0.85em;
-            color: #4ade80;
+
+        /* Player Overlay */
+        #player-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 1000;
             display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #player-container {
+            width: 90%;
+            max-width: 1000px;
+            background: #000;
+            aspect-ratio: 16/9;
+            position: relative;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .close-player {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 30px;
+            cursor: pointer;
+            z-index: 1001;
+        }
+        .player-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 20px;
+        }
+        
+        .loading { text-align: center; color: var(--accent-color); margin-top: 20px; display: none;}
+        .debug-info {
+            width: 100%; max-width: 1000px; margin-bottom: 20px;
+            background: #1e293b; padding: 10px; border-radius: 8px;
+            font-family: monospace; font-size: 0.85em; color: #4ade80; display: none;
         }
     </style>
 </head>
 <body>
 
-    <h1>Vision <span style="font-size:0.5em; color:var(--accent-color)">Prototype v1.1</span></h1>
+    <h1>Vision <span style="font-size:0.5em; color:var(--accent-color)">Prototype v1.2</span></h1>
 
     <div class="search-box">
-        <input type="text" id="searchInput" placeholder="Rechercher un anime (ex: piece one, naruto)..." value="piece one">
+        <input type="text" id="searchInput" placeholder="Rechercher un anime (ex: piece one, the boys)..." value="the boys">
         <button id="searchBtn" onclick="performSearch()">Rechercher</button>
     </div>
 
     <div id="debugInfo" class="debug-info"></div>
     <div id="loading" class="loading">Chargement...</div>
     
-    <!-- Zone de résultats de recherche -->
     <h3 id="searchTitle" style="display:none; width:100%; max-width:1000px;">Résultats</h3>
     <div id="search-results-area"></div>
 
-    <!-- Zone des épisodes -->
     <h3 id="episodesTitle" style="display:none; width:100%; max-width:1000px;">Épisodes</h3>
     <div id="episodes-area"></div>
 
+    <!-- PLAYER OVERLAY -->
+    <div id="player-overlay">
+        <div class="close-player" onclick="closePlayer()">×</div>
+        <div id="player-container">
+            <iframe id="video-frame" src="" allowfullscreen></iframe>
+        </div>
+        <div class="player-actions">
+            <button onclick="openExternal()" style="background:#ef4444;">Ouvrir sur le site source ↗</button>
+        </div>
+        <p style="color:gray; margin-top:10px;">Si la vidéo ne charge pas, utilisez le bouton "Ouvrir sur le site source".</p>
+    </div>
+
     <script>
-        // Trigger search on Enter key
+        let currentHistory = [];
+        let currentExternalLink = '';
+        let currentSlugContext = {}; // Pour sauvegarder l'historique
+
+        // Init
+        window.onload = async () => {
+            await loadHistory();
+        };
+
+        async function loadHistory() {
+            try {
+                const res = await fetch('/api/history');
+                currentHistory = await res.json();
+                updateSeenStatus();
+            } catch(e) { console.error(e); }
+        }
+
+        function updateSeenStatus() {
+            document.querySelectorAll('.episode-card').forEach(card => {
+                const id = card.dataset.id;
+                // Simple check: slug + episode number
+                const seen = currentHistory.some(h => 
+                    h.slug === card.dataset.slug && 
+                    h.episode == card.dataset.ep
+                );
+                if (seen) card.classList.add('seen');
+            });
+        }
+
+        async function addToHistory(data) {
+            try {
+                await fetch('/api/history', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                await loadHistory(); // Refresh visuals
+            } catch(e) { console.error(e); }
+        }
+
+        // Search Logic
         document.getElementById('searchInput').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                performSearch();
-            }
+            if (e.key === 'Enter') performSearch();
         });
 
         async function performSearch() {
             const query = document.getElementById('searchInput').value;
             const btn = document.getElementById('searchBtn');
             const loading = document.getElementById('loading');
-            const searchResultsArea = document.getElementById('search-results-area');
-            const episodesArea = document.getElementById('episodes-area');
-            const debugInfo = document.getElementById('debugInfo');
-            const searchTitle = document.getElementById('searchTitle');
-            const episodesTitle = document.getElementById('episodesTitle');
-
+            
             if(!query) return alert("Veuillez entrer une recherche");
 
             // Reset UI
-            searchResultsArea.innerHTML = '';
-            episodesArea.innerHTML = '';
-            debugInfo.style.display = 'none';
-            searchTitle.style.display = 'none';
-            episodesTitle.style.display = 'none';
+            document.getElementById('search-results-area').innerHTML = '';
+            document.getElementById('episodes-area').innerHTML = '';
+            document.getElementById('searchTitle').style.display = 'none';
+            document.getElementById('episodesTitle').style.display = 'none';
+            
             btn.disabled = true;
             loading.style.display = 'block';
-            loading.innerText = "Recherche en cours...";
+            loading.innerText = "Recherche multi-sources en cours...";
 
             try {
                 const response = await fetch('/api/search', {
@@ -207,16 +312,10 @@
                 });
                 const data = await response.json();
 
-                if (data.error) {
-                    alert('Erreur: ' + data.error);
-                    return;
-                }
-
                 if (data.results.length === 0) {
-                    debugInfo.innerText = `Aucun résultat trouvé pour "${query}".`;
-                    debugInfo.style.display = 'block';
+                    alert("Aucun résultat.");
                 } else {
-                    searchTitle.style.display = 'block';
+                    document.getElementById('searchTitle').style.display = 'block';
                     data.results.forEach(anime => {
                         const card = document.createElement('div');
                         card.className = 'search-card';
@@ -224,15 +323,14 @@
                         
                         card.innerHTML = `
                             <div style="position:relative;">
-                                <img src="${anime.image}" alt="${anime.title}">
-                                <div class="provider-tag" style="position:absolute; top:5px; right:5px; background:rgba(0,0,0,0.8);">${anime.provider}</div>
+                                <img src="${anime.image || 'https://via.placeholder.com/200x300?text=No+Image'}" alt="${anime.title}">
+                                <div class="provider-tag">${anime.provider}</div>
                             </div>
                             <div class="search-card-title">${anime.title}</div>
                         `;
-                        searchResultsArea.appendChild(card);
+                        document.getElementById('search-results-area').appendChild(card);
                     });
                 }
-
             } catch (error) {
                 console.error(error);
                 alert("Erreur réseau.");
@@ -244,53 +342,102 @@
 
         async function loadEpisodes(slug, title, provider) {
             const loading = document.getElementById('loading');
-            const episodesArea = document.getElementById('episodes-area');
-            const episodesTitle = document.getElementById('episodesTitle');
+            const area = document.getElementById('episodes-area');
             const debugInfo = document.getElementById('debugInfo');
 
-            episodesArea.innerHTML = '';
-            episodesTitle.style.display = 'none';
+            area.innerHTML = '';
+            document.getElementById('episodesTitle').style.display = 'none';
             loading.style.display = 'block';
             loading.innerText = `[${provider}] Analyse du catalogue pour : ${title}...`;
+
+            // Save context for history
+            currentSlugContext = { slug, title, provider };
 
             try {
                 const safeSlug = encodeURIComponent(slug);
                 const response = await fetch(`/api/anime/${provider}/${safeSlug}`);
                 const data = await response.json();
 
-                if (data.error) {
-                    alert('Erreur: ' + data.error);
-                    return;
-                }
-
-                debugInfo.innerText = `Chargé: ${title} (${data.count} épisodes)`;
+                document.getElementById('episodesTitle').style.display = 'block';
+                debugInfo.innerText = `${data.count} épisodes trouvés sur ${provider}`;
                 debugInfo.style.display = 'block';
-                episodesTitle.style.display = 'block';
 
                 data.results.forEach(ep => {
                     const card = document.createElement('div');
                     card.className = 'episode-card';
+                    // Meta data for history checking
+                    card.dataset.slug = slug;
+                    card.dataset.ep = ep.episode;
                     
-                    let providersHtml = ep.providers.map(p => 
-                        `<a href="${p.url}" target="_blank" class="provider-tag">${p.name}</a>`
-                    ).join('');
+                    const seenBadge = document.createElement('div');
+                    seenBadge.className = 'seen-badge';
+                    seenBadge.innerText = 'VU';
+                    card.appendChild(seenBadge);
 
-                    card.innerHTML = `
+                    const content = document.createElement('div');
+                    content.innerHTML = `
                         <div class="episode-header">${ep.type} - ${ep.season}</div>
                         <div class="episode-title">Épisode ${ep.episode}</div>
-                        <div class="provider-list">${providersHtml}</div>
                     `;
-                    episodesArea.appendChild(card);
+                    card.appendChild(content);
+
+                    const providersDiv = document.createElement('div');
+                    providersDiv.className = 'provider-list';
+
+                    ep.providers.forEach(p => {
+                        const btn = document.createElement('button');
+                        btn.className = 'play-btn';
+                        btn.innerText = p.name;
+                        btn.onclick = (e) => {
+                            e.stopPropagation();
+                            playVideo(p.url, ep.episode, ep.season);
+                        };
+                        providersDiv.appendChild(btn);
+                    });
+                    
+                    card.appendChild(providersDiv);
+                    area.appendChild(card);
                 });
 
-                // Scroll to episodes
-                episodesTitle.scrollIntoView({ behavior: 'smooth' });
+                updateSeenStatus();
+                document.getElementById('episodesTitle').scrollIntoView({ behavior: 'smooth' });
 
             } catch (error) {
                 console.error(error);
                 alert("Erreur lors du chargement des épisodes.");
             } finally {
                 loading.style.display = 'none';
+            }
+        }
+
+        function playVideo(url, episode, season) {
+            currentExternalLink = url;
+            
+            // History tracking
+            addToHistory({
+                slug: currentSlugContext.slug,
+                title: currentSlugContext.title,
+                provider: currentSlugContext.provider,
+                episode: episode,
+                season: season
+            });
+
+            // Check if it's a direct link (page) or video
+            // If it's a webpage from Yandex Fallback, we might want to open it externally directly if embedding fails
+            // But let's try embedding first.
+            
+            document.getElementById('video-frame').src = url;
+            document.getElementById('player-overlay').style.display = 'flex';
+        }
+
+        function closePlayer() {
+            document.getElementById('player-overlay').style.display = 'none';
+            document.getElementById('video-frame').src = '';
+        }
+
+        function openExternal() {
+            if(currentExternalLink) {
+                window.open(currentExternalLink, '_blank');
             }
         }
     </script>

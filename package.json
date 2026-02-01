@@ -1,0 +1,33 @@
+{
+  "name": "vision",
+  "version": "1.0.0",
+  "description": "One for all",
+  "keywords": [],
+  "homepage": "https://github.com/tadoniji/Vision#readme",
+  "bugs": {
+    "url": "https://github.com/tadoniji/Vision/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tadoniji/Vision.git"
+  },
+  "license": "ISC",
+  "author": "Tadoniji",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.2.0",
+    "@fastify/static": "^9.0.0",
+    "axios": "^1.13.4",
+    "cheerio": "^1.2.0",
+    "fastify": "^5.7.2",
+    "playwright": "^1.58.1"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.2"
+  }
+}

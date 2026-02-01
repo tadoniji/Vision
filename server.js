@@ -5,10 +5,12 @@ const cors = require('@fastify/cors');
 // Import Providers
 const animeSama = require('./src/providers/animeSama');
 const flemmix = require('./src/providers/flemmix');
+const yandex = require('./src/providers/yandexFallback');
 
 const PROVIDERS = {
     'anime-sama': animeSama,
-    'flemmix': flemmix
+    'flemmix': flemmix,
+    'yandex': yandex
 };
 
 // Activer CORS
@@ -26,11 +28,11 @@ fastify.post('/api/search', async (request, reply) => {
   if (!query) return reply.status(400).send({ error: "Query manquante" });
 
   try {
-    // Lancer les recherches en parallèle
-    const promises = Object.entries(PROVIDERS).map(async ([name, provider]) => {
+    // 1. Lancer les recherches standards en parallèle
+    const standardProviders = { 'anime-sama': animeSama, 'flemmix': flemmix };
+    const promises = Object.entries(standardProviders).map(async ([name, provider]) => {
         try {
             const results = await provider.searchAnime(query);
-            // Taguer chaque résultat avec le nom du provider
             return results.map(r => ({ ...r, provider: name }));
         } catch (e) {
             console.error(`Erreur provider ${name}:`, e.message);
@@ -39,7 +41,19 @@ fastify.post('/api/search', async (request, reply) => {
     });
 
     const resultsArray = await Promise.all(promises);
-    const flattenedResults = resultsArray.flat();
+    let flattenedResults = resultsArray.flat();
+
+    // 2. Fallback Yandex si aucun résultat
+    if (flattenedResults.length === 0) {
+        console.log("Aucun résultat interne. Lancement du Fallback Yandex...");
+        try {
+            const yandexResults = await yandex.searchAnime(query);
+            const taggedYandex = yandexResults.map(r => ({ ...r, provider: 'yandex' }));
+            flattenedResults = flattenedResults.concat(taggedYandex);
+        } catch (e) {
+            console.error("Erreur Yandex:", e);
+        }
+    }
 
     return { results: flattenedResults };
 

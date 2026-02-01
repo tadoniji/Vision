@@ -128,6 +128,22 @@ async function fetchEpisodes(url) {
                 return baseUrl + (link.startsWith('/') ? '' : '/') + link;
             };
 
+            // Structure de regroupement : { "Saison X-1": { season, episode, providers: [] } }
+            const episodeMap = {};
+
+            const addEpisode = (season, epNum, type, name, url) => {
+                const key = `${season}-${epNum}`;
+                if (!episodeMap[key]) {
+                    episodeMap[key] = {
+                        season: season,
+                        episode: parseInt(epNum),
+                        type: "Multi-Sources", // Type générique car on mélange iframe et liens
+                        providers: []
+                    };
+                }
+                episodeMap[key].providers.push({ name: name, url: url });
+            };
+
             // 1. Détection des IFrames (Lecteurs déjà présents)
             const iframes = document.querySelectorAll('iframe');
             iframes.forEach((iframe, i) => {
@@ -139,21 +155,18 @@ async function fetchEpisodes(url) {
                         const isAd = src.includes('google') || src.includes('facebook') || src.includes('amazon') || src.includes('cloudflare');
 
                         if (!isRoot && !isAd) {
-                            eps.push({
-                                season: "Lecteur Direct",
-                                episode: i + 1,
-                                type: "Embed",
-                                providers: [{ name: `Lecteur ${i+1} (Page actuelle)`, url: src }]
-                            });
+                            // Pour les iframes sur la page, on assume que c'est le contenu principal
+                            // Souvent Episode 1 ou le Film
+                            addEpisode("Contenu Principal", 1, "Embed", `Lecteur ${i+1} (Page)`, src);
                         }
                     } catch(e){}
                 }
             });
 
-            // 2. Détection des Liens d'épisodes (Crawling de liste)
+            // 2. Détection des Liens d'épisodes
             const links = document.querySelectorAll('a');
             const pageTitle = document.title;
-            let globalSeason = "Saison Inconnue";
+            let globalSeason = "Saison 1"; // Par défaut
             
             const titleSeasonMatch = pageTitle.match(/(?:saison|season)\s*(\d+)/i);
             if (titleSeasonMatch) globalSeason = "Saison " + titleSeasonMatch[1];
@@ -178,18 +191,13 @@ async function fetchEpisodes(url) {
                     epNum = epMatch[1] || epMatch[2] || epMatch[4] || epMatch[5];
                 } 
                 else if (numberRegex.test(text)) {
-                    if (href.toLowerCase().match(/episode|ep\.|ep-|\/e\d+/)) {
-                        epNum = text;
-                    } 
-                    else if (a.parentElement.className.match(/episode|saison|season/i)) {
-                        epNum = text;
-                    }
-                    else {
-                        epNum = text;
-                    }
+                    if (href.toLowerCase().match(/episode|ep\.|ep-|\/e\d+/)) epNum = text;
+                    else if (a.parentElement.className.match(/episode|saison|season/i)) epNum = text;
+                    else epNum = text; // Optimiste
                 }
 
                 if (epNum) {
+                    // Recherche de saison locale
                     let prev = a.parentElement;
                     let foundSeason = null;
                     for(let k=0; k<3; k++) {
@@ -203,27 +211,16 @@ async function fetchEpisodes(url) {
                     }
                     if(foundSeason) currentSeason = foundSeason;
 
-                    eps.push({
-                        season: currentSeason,
-                        episode: parseInt(epNum),
-                        type: "Lien",
-                        providers: [{ name: "Ouvrir Page Épisode", url: href }]
-                    });
+                    // Nom du provider basé sur le domaine
+                    let domain = "Lien";
+                    try { domain = new URL(href).hostname.replace('www.', '').split('.')[0]; } catch(e){}
+                    
+                    addEpisode(currentSeason, epNum, "Lien", `Ouvrir [${domain}]`, href);
                 }
             });
 
-            // Nettoyage des doublons (Même URL)
-            const uniqueEps = [];
-            const seenUrls = new Set();
-            eps.forEach(e => {
-                const u = e.providers[0].url;
-                if(!seenUrls.has(u)) {
-                    seenUrls.add(u);
-                    uniqueEps.push(e);
-                }
-            });
-
-            return uniqueEps.sort((a,b) => a.episode - b.episode);
+            // Conversion Map -> Array
+            return Object.values(episodeMap).sort((a,b) => a.episode - b.episode);
         });
 
         console.log(`[Yandex] Extracted ${episodes.length} streams/links from ${url}`);

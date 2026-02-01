@@ -4,16 +4,25 @@ const cheerio = require('cheerio');
 const TMDB_URL = 'https://www.themoviedb.org';
 
 async function getPoster(query) {
-    // Nettoyage du titre (enlève [Ext], les années entre parenthèses, etc pour optimiser la recherche)
+    // Nettoyage agressif pour maximiser les chances de trouver sur TMDB
+    // On enlève tout le "bruit" ajouté par les sites de streaming
     const cleanQuery = query
-        .replace(/\[Ext\]/g, '')
-        .replace(/\(\d{4}\)/g, '') // Enlever l'année ex: (2023)
-        .replace(/saison \d+/i, '')
-        .replace(/season \d+/i, '')
+        .toLowerCase()
+        .replace(/\[ext\]/g, '')
+        .replace(/saison \d+/g, '')
+        .replace(/season \d+/g, '')
+        .replace(/épisode \d+/g, '')
+        .replace(/episode \d+/g, '')
+        .replace(/\(\d{4}\)/g, '') // (2023)
+        .replace(/(streaming|voir|regarder|gratuit|complet|vf|vostfr|full|hd|fr|french|en ligne)/g, '')
+        .replace(/[^a-zA-Z0-9éèàêâôîûùïç\s]/g, ' ') // Enlever caractères spéciaux sauf accents
         .trim();
 
+    // Si le titre devient vide (ex: juste "streaming"), on garde l'original
+    const finalQuery = cleanQuery.length > 1 ? cleanQuery : query;
+
     try {
-        const searchUrl = `${TMDB_URL}/search?query=${encodeURIComponent(cleanQuery)}`;
+        const searchUrl = `${TMDB_URL}/search?query=${encodeURIComponent(finalQuery)}`;
         
         const { data } = await axios.get(searchUrl, {
             headers: {

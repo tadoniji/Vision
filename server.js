@@ -1,18 +1,38 @@
+require('./src/logger'); // Init Logger first
 const fastify = require('fastify')({ logger: true });
 const path = require('path');
+const fs = require('fs');
 const cors = require('@fastify/cors');
 
 // Import Providers
 const animeSama = require('./src/providers/animeSama');
 const flemmix = require('./src/providers/flemmix');
 const yandex = require('./src/providers/yandexFallback');
-const { getHistory, addToHistory } = require('./src/historyManager');
 
-const PROVIDERS = {
+// Managers & Services
+const { getHistory, addToHistory, getProgress } = require('./src/historyManager');
+const { getNotes, saveNotes } = require('./src/notepadManager');
+const tmdbService = require('./src/services/tmdb');
+
+const SYSTEM_PROVIDERS = {
     'anime-sama': animeSama,
     'flemmix': flemmix,
     'yandex': yandex
 };
+
+const CONFIG_PATH = path.join(__dirname, 'data', 'config.json');
+
+// Helper Config
+function getConfig() {
+    if (!fs.existsSync(CONFIG_PATH)) return { providers: [], tmdbApiKey: "" };
+    const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+    if (!config.tmdbApiKey) config.tmdbApiKey = "";
+    return config;
+}
+
+function saveConfig(config) {
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 4));
+}
 
 // Activer CORS
 fastify.register(cors);
@@ -23,15 +43,70 @@ fastify.register(require('@fastify/static'), {
   prefix: '/', 
 });
 
-// Route API : Historique (Lecture)
+// Route API : Config (Lecture)
+fastify.get('/api/config', async (request, reply) => {
+    return getConfig();
+});
+
+// Route API : Config (Écriture)
+fastify.post('/api/config', async (request, reply) => {
+    const newConfig = request.body;
+    saveConfig(newConfig);
+    return { success: true };
+});
+
+// --- TMDB ROUTES ---
+
+fastify.get('/api/tmdb/search', async (request, reply) => {
+    const { query } = request.query;
+    const config = getConfig();
+    if (!config.tmdbApiKey) return { error: "Clé API TMDB manquante" };
+    
+    return await tmdbService.searchMulti(query, config.tmdbApiKey);
+});
+
+fastify.get('/api/tmdb/details/:type/:id', async (request, reply) => {
+    const { type, id } = request.params;
+    const config = getConfig();
+    if (!config.tmdbApiKey) return { error: "Clé API TMDB manquante" };
+
+    return await tmdbService.getDetails(type, id, config.tmdbApiKey);
+});
+
+fastify.get('/api/tmdb/season/:id/:season', async (request, reply) => {
+    const { id, season } = request.params;
+    const config = getConfig();
+    if (!config.tmdbApiKey) return { error: "Clé API TMDB manquante" };
+
+    return await tmdbService.getSeason(id, season, config.tmdbApiKey);
+});
+
+// --- NOTEPAD ROUTES ---
+
+fastify.get('/api/notes', async (request, reply) => {
+    return getNotes();
+});
+
+fastify.post('/api/notes', async (request, reply) => {
+    const { content } = request.body;
+    saveNotes(content);
+    return { success: true };
+});
+
+// --- HISTORY ROUTES ---
+
 fastify.get('/api/history', async (request, reply) => {
     return getHistory();
 });
 
-// Route API : Historique (Écriture)
+fastify.get('/api/progress', async (request, reply) => {
+    return getProgress();
+});
+
 fastify.post('/api/history', async (request, reply) => {
     const entry = request.body;
-    if (!entry || !entry.slug || !entry.episode) {
+    // Entry needs: slug (title), episode, season, tmdbId (optional but recommended now)
+    if (!entry || !entry.title) {
         return reply.status(400).send({ error: "Données incomplètes" });
     }
     
@@ -39,66 +114,74 @@ fastify.post('/api/history', async (request, reply) => {
     return { success: true };
 });
 
-// Route API : Recherche Multi-Sources
-fastify.post('/api/search', async (request, reply) => {
-  const { query } = request.body;
-  if (!query) return reply.status(400).send({ error: "Query manquante" });
+// --- SOURCES ROUTES (The "Play" action) ---
 
-  try {
-    // 1. Lancer les recherches standards en parallèle
-    const standardProviders = { 'anime-sama': animeSama, 'flemmix': flemmix };
-    const promises = Object.entries(standardProviders).map(async ([name, provider]) => {
+// Cherche des sources pour une requête spécifique (ex: "One Piece S1 E1") sur tous les providers
+fastify.post('/api/sources', async (request, reply) => {
+    const { query } = request.body;
+    if (!query) return reply.status(400).send({ error: "Query manquante" });
+
+    const config = getConfig();
+    const activeProviders = config.providers.filter(p => p.enabled);
+    
+    // On lance la recherche en parallèle sur tous les providers actifs
+    const promises = activeProviders.map(async (providerConfig) => {
         try {
-            const results = await provider.searchAnime(query);
-            return results.map(r => ({ ...r, provider: name }));
+            let results = [];
+            if (providerConfig.type === 'scraper' && SYSTEM_PROVIDERS[providerConfig.id]) {
+                // Pour les sources, on utilise searchAnime des providers existants
+                // Note: La plupart des providers retournent une liste d'anime/films, pas directement l'épisode.
+                // C'est une limitation ici : on cherche le titre, et l'utilisateur devra peut-être recliquer.
+                // MAIS, le but est de trouver le lien direct si possible.
+                // Simplification pour ce prototype : On retourne les résultats de recherche du provider.
+                // L'utilisateur cliquera sur le bon résultat provider pour lancer le player existant.
+                results = await SYSTEM_PROVIDERS[providerConfig.id].searchAnime(query);
+            } else if (providerConfig.type === 'custom') {
+                const searchUrl = providerConfig.url.replace('{query}', encodeURIComponent(query));
+                results = [{
+                    title: `Rechercher sur ${providerConfig.name}`,
+                    slug: 'external-link',
+                    image: 'https://via.placeholder.com/200x300?text=External',
+                    url: searchUrl,
+                    provider: providerConfig.id,
+                    providerName: providerConfig.name,
+                    isExternal: true
+                }];
+            }
+            
+            // Standardize results
+            return results.map(r => ({ ...r, provider: providerConfig.id, providerName: providerConfig.name }));
+
         } catch (e) {
-            console.error(`Erreur provider ${name}:`, e.message);
+            console.error(`Erreur source ${providerConfig.name}:`, e.message);
             return [];
         }
     });
 
-    const resultsArray = await Promise.all(promises);
-    let flattenedResults = resultsArray.flat();
+    const resultsArrays = await Promise.all(promises);
+    const flatResults = resultsArrays.flat();
 
-    // 2. Fallback Yandex Élargi
-    if (flattenedResults.length < 5) {
-        console.log(`Résultats internes insuffisants (${flattenedResults.length}). Lancement de l'extension Yandex...`);
-        try {
-            const yandexResults = await yandex.searchAnime(query);
-            const taggedYandex = yandexResults.map(r => ({ ...r, provider: 'yandex' }));
-            
-            // On ajoute les résultats Yandex à la suite
-            flattenedResults = flattenedResults.concat(taggedYandex);
-        } catch (e) {
-            console.error("Erreur Yandex:", e);
-        }
-    }
-
-    return { results: flattenedResults };
-
-  } catch (err) {
-    fastify.log.error(err);
-    return reply.status(500).send({ error: "Erreur lors de la recherche globale" });
-  }
+    return { results: flatResults };
 });
 
-// Route API : Récupérer les épisodes d'un provider spécifique
+// Route Legacy : Récupérer les épisodes d'un provider spécifique (utilisé quand on clique sur un résultat provider)
 fastify.get('/api/anime/:provider/:slug', async (request, reply) => {
   const { provider, slug } = request.params;
   
-  if (!PROVIDERS[provider]) {
-      return reply.status(404).send({ error: "Provider inconnu" });
+  if (!SYSTEM_PROVIDERS[provider]) {
+      return reply.status(404).send({ error: "Scraper interne inconnu" });
   }
 
   try {
-    console.log(`Extraction via ${provider} pour : ${slug}`);
-    const episodes = await PROVIDERS[provider].fetchEpisodes(slug);
+    // console.log(`Extraction via ${provider} pour : ${slug}`);
+    const episodes = await SYSTEM_PROVIDERS[provider].fetchEpisodes(slug);
     return { count: episodes.length, results: episodes };
   } catch (err) {
     fastify.log.error(err);
     return reply.status(500).send({ error: "Erreur lors du scraping" });
   }
 });
+
 
 // Lancer le serveur
 const start = async () => {

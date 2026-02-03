@@ -1,0 +1,25 @@
+{
+    "providers": [
+        {
+            "id": "anime-sama",
+            "name": "Anime-Sama",
+            "type": "scraper",
+            "enabled": true,
+            "system": true
+        },
+        {
+            "id": "flemmix",
+            "name": "Flemmix",
+            "type": "scraper",
+            "enabled": true,
+            "system": true
+        },
+        {
+            "id": "yandex",
+            "name": "Yandex (Global)",
+            "type": "scraper",
+            "enabled": true,
+            "system": true
+        }
+    ]
+}

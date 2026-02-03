@@ -2,13 +2,18 @@ const fs = require('fs');
 const path = require('path');
 
 const HISTORY_FILE = path.join(__dirname, '../data/history.json');
+const PROGRESS_FILE = path.join(__dirname, '../data/progress.json');
 
-// Initialiser le fichier si inexistant
+// Initialiser les fichiers si inexistants
+if (!fs.existsSync(path.dirname(HISTORY_FILE))) {
+    fs.mkdirSync(path.dirname(HISTORY_FILE), { recursive: true });
+}
+
 if (!fs.existsSync(HISTORY_FILE)) {
-    if (!fs.existsSync(path.dirname(HISTORY_FILE))) {
-        fs.mkdirSync(path.dirname(HISTORY_FILE), { recursive: true });
-    }
     fs.writeFileSync(HISTORY_FILE, JSON.stringify([]));
+}
+if (!fs.existsSync(PROGRESS_FILE)) {
+    fs.writeFileSync(PROGRESS_FILE, JSON.stringify({}));
 }
 
 function getHistory() {
@@ -16,8 +21,16 @@ function getHistory() {
         const data = fs.readFileSync(HISTORY_FILE, 'utf8');
         return JSON.parse(data);
     } catch (e) {
-        console.error("Erreur lecture historique:", e);
         return [];
+    }
+}
+
+function getProgress() {
+    try {
+        const data = fs.readFileSync(PROGRESS_FILE, 'utf8');
+        return JSON.parse(data);
+    } catch (e) {
+        return {};
     }
 }
 
@@ -28,27 +41,39 @@ function addToHistory(item) {
         timestamp: new Date().toISOString()
     };
 
-    // Éviter les doublons exacts (même slug, même épisode), on met à jour le timestamp
-    const existingIndex = history.findIndex(h => h.slug === item.slug && h.episode === item.episode && h.season === item.season);
-    
-    if (existingIndex >= 0) {
-        history[existingIndex] = entry; // Mise à jour (remonte en haut de liste)
-    } else {
-        history.push(entry);
-    }
-
-    // Garder seulement les 100 derniers
-    if (history.length > 100) {
-        history.shift(); 
-    }
+    // Historique linéaire
+    history.unshift(entry); // Ajouter au début
+    if (history.length > 100) history.pop(); // Garder 100 max
 
     try {
         fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
-        return true;
     } catch (e) {
         console.error("Erreur écriture historique:", e);
-        return false;
     }
+
+    // Mise à jour de la progression (Dernier épisode vu)
+    if (item.tmdbId) {
+        const progress = getProgress();
+        progress[item.tmdbId] = {
+            season: item.season,
+            episode: item.episode,
+            timestamp: new Date().toISOString(),
+            slug: item.slug,
+            title: item.title
+        };
+        try {
+            fs.writeFileSync(PROGRESS_FILE, JSON.stringify(progress, null, 2));
+        } catch (e) {
+             console.error("Erreur écriture progression:", e);
+        }
+    }
+
+    return true;
 }
 
-module.exports = { getHistory, addToHistory };
+function getLastWatched(tmdbId) {
+    const progress = getProgress();
+    return progress[tmdbId] || null;
+}
+
+module.exports = { getHistory, addToHistory, getLastWatched, getProgress };

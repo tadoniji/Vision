@@ -1,11 +1,11 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 
-const TMDB_URL = 'https://www.themoviedb.org';
+const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+const TMDB_WEB_URL = 'https://www.themoviedb.org';
 
+// Legacy scraper (Fallback)
 async function getPoster(query) {
-    // Nettoyage agressif pour maximiser les chances de trouver sur TMDB
-    // On enlève tout le "bruit" ajouté par les sites de streaming
     const cleanQuery = query
         .toLowerCase()
         .replace(/\[ext\]/g, '')
@@ -13,16 +13,15 @@ async function getPoster(query) {
         .replace(/season \d+/g, '')
         .replace(/épisode \d+/g, '')
         .replace(/episode \d+/g, '')
-        .replace(/\(\d{4}\)/g, '') // (2023)
+        .replace(/\(\d{4}\)/g, '')
         .replace(/(streaming|voir|regarder|gratuit|complet|vf|vostfr|full|hd|fr|french|en ligne)/g, '')
-        .replace(/[^a-zA-Z0-9éèàêâôîûùïç\s]/g, ' ') // Enlever caractères spéciaux sauf accents
+        .replace(/[^a-zA-Z0-9éèàêâôîûùïç\s]/g, ' ')
         .trim();
 
-    // Si le titre devient vide (ex: juste "streaming"), on garde l'original
     const finalQuery = cleanQuery.length > 1 ? cleanQuery : query;
 
     try {
-        const searchUrl = `${TMDB_URL}/search?query=${encodeURIComponent(finalQuery)}`;
+        const searchUrl = `${TMDB_WEB_URL}/search?query=${encodeURIComponent(finalQuery)}`;
         
         const { data } = await axios.get(searchUrl, {
             headers: {
@@ -32,26 +31,57 @@ async function getPoster(query) {
         });
 
         const $ = cheerio.load(data);
-        
-        // Sélecteur pour la première affiche de résultat
         const imageEl = $('.card .image img').first();
         let src = imageEl.attr('data-src') || imageEl.attr('src');
 
         if (src) {
-            // TMDB met souvent des urls relatives ou vides
             if (!src.startsWith('http')) {
-                src = `${TMDB_URL}${src}`;
+                src = `${TMDB_WEB_URL}${src}`;
             }
-            // Remplacer la taille 'w94_and_h141_bestv2' par une meilleure qualité 'w600_and_h900_bestv2'
             return src.replace('w94_and_h141_bestv2', 'w600_and_h900_bestv2');
         }
 
-    } catch (e) {
-        // En cas d'erreur ou pas de résultat, on retourne null
-        // console.error(`Erreur TMDB pour ${cleanQuery}:`, e.message);
-    }
+    } catch (e) {}
     
     return null;
 }
 
-module.exports = { getPoster };
+// API Functions
+async function searchMulti(query, apiKey) {
+    if (!apiKey) return { results: [] };
+    try {
+        const url = `${TMDB_BASE_URL}/search/multi?api_key=${apiKey}&language=fr-FR&query=${encodeURIComponent(query)}&page=1&include_adult=false`;
+        const { data } = await axios.get(url);
+        // Filter only movie and tv
+        return data.results.filter(item => item.media_type === 'movie' || item.media_type === 'tv');
+    } catch (error) {
+        console.error("TMDB Search Error:", error.message);
+        return [];
+    }
+}
+
+async function getDetails(type, id, apiKey) {
+    if (!apiKey) return null;
+    try {
+        const url = `${TMDB_BASE_URL}/${type}/${id}?api_key=${apiKey}&language=fr-FR`;
+        const { data } = await axios.get(url);
+        return data;
+    } catch (error) {
+        console.error(`TMDB Details Error (${type}/${id}):`, error.message);
+        return null;
+    }
+}
+
+async function getSeason(tvId, seasonNumber, apiKey) {
+    if (!apiKey) return null;
+    try {
+        const url = `${TMDB_BASE_URL}/tv/${tvId}/season/${seasonNumber}?api_key=${apiKey}&language=fr-FR`;
+        const { data } = await axios.get(url);
+        return data;
+    } catch (error) {
+        console.error(`TMDB Season Error (${tvId}/S${seasonNumber}):`, error.message);
+        return null;
+    }
+}
+
+module.exports = { getPoster, searchMulti, getDetails, getSeason };

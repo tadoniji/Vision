@@ -81,6 +81,19 @@ fastify.get('/api/tmdb/season/:id/:season', async (request, reply) => {
     return await tmdbService.getSeason(id, season, config.tmdbApiKey);
 });
 
+fastify.get('/api/tmdb/trending', async (request, reply) => {
+    const config = getConfig();
+    if (!config.tmdbApiKey) return [];
+    return await tmdbService.getTrending(config.tmdbApiKey);
+});
+
+fastify.get('/api/tmdb/popular/:type', async (request, reply) => {
+    const { type } = request.params;
+    const config = getConfig();
+    if (!config.tmdbApiKey) return [];
+    return await tmdbService.getPopular(type, config.tmdbApiKey);
+});
+
 // --- NOTEPAD ROUTES ---
 
 fastify.get('/api/notes', async (request, reply) => {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vision - TMDB Enhanced</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&amp;display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-color: #0f172a;
@@ -101,38 +101,49 @@
         }
         .search-input:focus { border-color: var(--accent-color); outline: none; }
 
-        /* Grid */
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 20px;
-            max-width: 1200px;
-            margin: 0 auto;
+        /* Discovery / Home Sections */
+        .section-header { margin: 30px 0 15px 0; font-size: 1.4rem; font-weight: 700; color: white; }
+        .horizontal-scroll {
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            padding-bottom: 20px;
+            scroll-behavior: smooth;
         }
-        
-        .card {
+        .horizontal-scroll::-webkit-scrollbar { height: 8px; }
+        .horizontal-scroll::-webkit-scrollbar-track { background: #1e293b; border-radius: 4px; }
+        .horizontal-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        .horizontal-scroll::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
+
+        .media-card {
+            flex: 0 0 160px;
             background-color: var(--card-color);
-            border-radius: 12px;
+            border-radius: 10px;
             overflow: hidden;
             cursor: pointer;
             transition: transform 0.2s;
             position: relative;
             aspect-ratio: 2/3;
         }
-        .card:hover { transform: scale(1.05); z-index: 10; }
-        .card img { width: 100%; height: 100%; object-fit: cover; }
-        .card-info {
+        .media-card:hover { transform: scale(1.05); z-index: 10; }
+        .media-card img { width: 100%; height: 100%; object-fit: cover; }
+        .media-title-overlay {
             position: absolute; bottom: 0; left: 0; right: 0;
             background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
             padding: 20px 10px 10px;
+            font-size: 0.85rem; font-weight: bold;
+            text-shadow: 0 1px 2px black;
             pointer-events: none;
         }
-        .card-title { font-weight: 600; font-size: 0.9rem; text-shadow: 0 1px 2px black; }
-        .card-meta { font-size: 0.75rem; color: #cbd5e1; display: flex; justify-content: space-between; margin-top: 4px; }
-        
-        .poster-placeholder {
-            width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
-            background: #334155; color: #94a3b8; font-weight: bold;
+
+        /* Search Grid */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            display: none; /* Hidden by default */
         }
 
         /* Details View */
@@ -234,10 +245,29 @@
             <!-- Home / Search View -->
             <div id="home-view">
                 <div class="search-container">
-                    <input type="text" class="search-input" id="search-input" placeholder="Rechercher un film ou une série..." onkeypress="handleEnter(event)">
+                    <input type="text" class="search-input" id="search-input" placeholder="Rechercher un film ou une série..." onkeypress="handleEnter(event)" oninput="handleInput(event)">
                 </div>
                 
-                <h3 id="section-title" style="max-width:1200px; margin: 0 auto 20px;">Populaires / Résultats</h3>
+                <!-- Discovery Sections -->
+                <div id="discovery-container">
+                    <div class="section-header">Tendances de la semaine</div>
+                    <div class="horizontal-scroll" id="trending-list">
+                        <!-- Items -->
+                    </div>
+
+                    <div class="section-header">Films Populaires</div>
+                    <div class="horizontal-scroll" id="movies-list">
+                        <!-- Items -->
+                    </div>
+
+                    <div class="section-header">Séries Populaires</div>
+                    <div class="horizontal-scroll" id="tv-list">
+                        <!-- Items -->
+                    </div>
+                </div>
+
+                <!-- Search Results -->
+                <h3 id="search-title" style="max-width:1200px; margin: 0 auto 20px; display:none;">Résultats</h3>
                 <div class="grid" id="results-grid">
                     <!-- Results injected here -->
                 </div>
@@ -329,6 +359,8 @@
             
             if (!config.tmdbApiKey) {
                 openSettings();
+            } else {
+                loadDiscovery();
             }
         };
 
@@ -363,7 +395,44 @@
             } catch(e) {}
         }
 
-        // ---NAVIGATION & UI ---
+        async function loadDiscovery() {
+            if(!config.tmdbApiKey) return;
+
+            fetchSection('/api/tmdb/trending', 'trending-list');
+            fetchSection('/api/tmdb/popular/movie', 'movies-list');
+            fetchSection('/api/tmdb/popular/tv', 'tv-list');
+        }
+
+        async function fetchSection(endpoint, containerId) {
+            try {
+                const res = await fetch(endpoint);
+                const data = await res.json();
+                const container = document.getElementById(containerId);
+                container.innerHTML = '';
+                
+                data.forEach(item => {
+                    const el = createMediaCard(item);
+                    container.appendChild(el);
+                });
+            } catch(e) { console.error(e); }
+        }
+
+        function createMediaCard(item) {
+            const card = document.createElement('div');
+            card.className = 'media-card';
+            card.onclick = () => loadMediaDetails(item.media_type, item.id);
+            
+            const img = item.poster_path ? `${IMG_BASE}${item.poster_path}` : null;
+            const title = item.title || item.name;
+
+            card.innerHTML = `
+                ${img ? `<img src="${img}" alt="${title}" loading="lazy">` : '<div style="padding:10px;">No IMG</div>'}
+                <div class="media-title-overlay">${title}</div>
+            `;
+            return card;
+        }
+
+        // --- NAVIGATION & UI ---
         function showHome() {
             document.getElementById('home-view').style.display = 'block';
             document.getElementById('details-view').style.display = 'none';
@@ -372,6 +441,24 @@
         function showDetails() {
             document.getElementById('home-view').style.display = 'none';
             document.getElementById('details-view').style.display = 'block';
+        }
+
+        function handleInput(e) {
+            const query = e.target.value;
+            const discovery = document.getElementById('discovery-container');
+            const grid = document.getElementById('results-grid');
+            const title = document.getElementById('search-title');
+
+            if (query.length > 0) {
+                discovery.style.display = 'none';
+                grid.style.display = 'grid';
+                title.style.display = 'block';
+            } else {
+                discovery.style.display = 'block';
+                grid.style.display = 'none';
+                title.style.display = 'none';
+                grid.innerHTML = ''; // clear results
+            }
         }
 
         function handleEnter(e) {
@@ -390,6 +477,11 @@
 
             const grid = document.getElementById('results-grid');
             grid.innerHTML = '<div style="grid-column:1/-1; text-align:center;">Recherche...</div>';
+            
+            // Ensure UI state
+            document.getElementById('discovery-container').style.display = 'none';
+            document.getElementById('search-title').style.display = 'block';
+            grid.style.display = 'grid';
 
             try {
                 const res = await fetch(`/api/tmdb/search?query=${encodeURIComponent(query)}`);
@@ -408,22 +500,18 @@
 
                 results.forEach(item => {
                     const card = document.createElement('div');
-                    card.className = 'card';
+                    card.className = 'media-card'; 
+                    card.style.flex = 'none'; // Reset flex for grid
+                    card.style.width = '100%'; // Full width of grid cell
+                    
                     card.onclick = () => loadMediaDetails(item.media_type, item.id);
                     
                     const img = item.poster_path ? `${IMG_BASE}${item.poster_path}` : null;
-                    const date = item.release_date || item.first_air_date || 'N/A';
                     const title = item.title || item.name;
 
                     card.innerHTML = `
-                        ${img ? `<img src="${img}" alt="${title}">` : '<div class="poster-placeholder">No Image</div>'}
-                        <div class="card-info">
-                            <div class="card-title">${title}</div>
-                            <div class="card-meta">
-                                <span>${date.split('-')[0]}</span>
-                                <span style="text-transform:uppercase; border:1px solid #cbd5e1; padding:0 4px; border-radius:4px; font-size:0.6rem;">${item.media_type}</span>
-                            </div>
-                        </div>
+                        ${img ? `<img src="${img}" alt="${title}">` : '<div style="padding:20px;">No Image</div>'}
+                        <div class="media-title-overlay">${title}</div>
                     `;
                     grid.appendChild(card);
                 });
@@ -445,10 +533,6 @@
             // Render Header
             const header = document.getElementById('details-header');
             const img = data.poster_path ? `${IMG_BASE}${data.poster_path}` : '';
-            const backdrop = data.backdrop_path ? `${IMG_BASE.replace('w500','original')}${data.backdrop_path}` : '';
-            
-            // Set background blur
-            // document.body.style.backgroundImage = `url(${backdrop})`; // Maybe too heavy, skipping for now
             
             let actionButton = '';
             if (type === 'movie') {
@@ -479,7 +563,6 @@
             const list = document.getElementById('season-list');
             list.innerHTML = '';
             
-            // Filter out season 0 (Specials) usually not interesting for main viewing, or keep it. Let's keep it.
             seasons.forEach(season => {
                 if (season.season_number === 0 && season.episode_count === 0) return;
                 
@@ -494,15 +577,15 @@
                 list.appendChild(chip);
             });
 
-            // Auto-select last watched season OR season 1
             const last = progress[tvId];
             if (last) {
-                // Find the chip for this season
-                // Logic to trigger click on correct season
-                // For now, just default to S1
-                loadEpisodes(tvId, last.season || 1);
+                const targetSeason = last.season || 1;
+                loadEpisodes(tvId, targetSeason);
+                
+                setTimeout(() => {
+                     const chips = document.querySelectorAll('.season-chip');
+                }, 100);
             } else if (seasons.length > 0) {
-                // Try to find Season 1, else first available
                 const s1 = seasons.find(s => s.season_number === 1);
                 loadEpisodes(tvId, s1 ? 1 : seasons[0].season_number);
             }
@@ -512,6 +595,14 @@
             const container = document.getElementById('episodes-list');
             container.innerHTML = 'Chargement...';
             
+            document.querySelectorAll('.season-chip').forEach(c => {
+                if(c.innerText.includes(`Saison ${seasonNum}`) || c.innerText === `Saison ${seasonNum}` || (seasonNum===1 && c.innerText==="Saison 1")) {
+                     c.classList.add('active');
+                } else {
+                     c.classList.remove('active');
+                }
+            });
+
             const res = await fetch(`/api/tmdb/season/${tvId}/${seasonNum}`);
             const data = await res.json();
             
@@ -524,10 +615,6 @@
 
             data.episodes.forEach(ep => {
                 const el = document.createElement('div');
-                // Check if watched
-                const isWatched = progress[tvId] && progress[tvId].season == seasonNum && progress[tvId].episode >= ep.episode_number;
-                // Wait, logic for "watched" is complex. "Last watched" is a single point.
-                // Let's just highlight the EXACT last watched one.
                 const isLastWatched = progress[tvId] && progress[tvId].season == seasonNum && progress[tvId].episode == ep.episode_number;
 
                 el.className = `episode-item ${isLastWatched ? 'watched' : ''}`;
@@ -600,18 +687,6 @@
         }
 
         async function launchSource(source) {
-            // Need to fetch specific episodes from the provider slug usually
-            // Since we searched for "Title S1 E1", the provider result might be the Anime/Show page, OR the Episode page.
-            // In most scrapers (like AnimeSama), searching returns the Show. Then we need episodes.
-            // This part is tricky to unify.
-            // For now, we assume the user might need to navigate ONE more step if the source is a "Show" container.
-            
-            // Simplification: We open a player with the provider's context.
-            // If the provider result allows direct playing, great. If it requires fetching episodes, we fetch.
-            
-            // Let's assume we need to fetch episodes from the provider slug to get the actual video Embed.
-            // We'll use the legacy route `/api/anime/:provider/:slug`.
-            
             const list = document.getElementById('sources-list');
             list.innerHTML = `<div style="text-align:center; padding:20px;">Chargement du lecteur depuis ${source.providerName}...</div>`;
 
@@ -619,23 +694,11 @@
                 const res = await fetch(`/api/anime/${source.provider}/${encodeURIComponent(source.slug)}`);
                 const data = await res.json();
                 
-                // Now we have the provider's episode list.
-                // We need to match S{currentMedia.season} E{currentMedia.episode}.
-                // Many providers just have a flat list "Episode 1, 2, ...".
-                // Logic:
-                // If it's a movie, take the first/only item.
-                // If it's a TV show, try to find "Episode X" where X matches.
-                
                 let targetEp = null;
                 
                 if (currentMedia.type === 'movie') {
-                    targetEp = data.results[0]; // Take first
+                    targetEp = data.results[0];
                 } else {
-                    // Fuzzy match
-                    // If provider separates seasons, good. If flat list (common in anime), assume absolute numbering or relative?
-                    // Difficult.
-                    // Fallback: Show the provider's episode list to the user to pick.
-                    
                     list.innerHTML = `<h4>Sélectionnez le fichier source (${source.providerName})</h4>`;
                     const subList = document.createElement('div');
                     subList.style.display = 'flex';
@@ -648,12 +711,12 @@
                         btn.style.background = '#334155';
                         btn.innerText = `${ep.season ? ep.season : ''} ${ep.episode}`;
                         btn.onclick = () => {
-                            playVideo(ep.providers[0].url); // Just take first player for now
+                            playVideo(ep.providers[0].url);
                         };
                         subList.appendChild(btn);
                     });
                     list.appendChild(subList);
-                    return; // Stop here, let user pick
+                    return;
                 }
 
                 if (targetEp && targetEp.providers && targetEp.providers.length > 0) {
@@ -701,7 +764,6 @@
             document.getElementById('notes-sidebar').classList.toggle('open');
         }
 
-        // Auto-save notes on typing (debounced)
         let noteTimeout;
         document.getElementById('notes-area').addEventListener('input', (e) => {
             clearTimeout(noteTimeout);
@@ -747,6 +809,7 @@
             }
             saveConfigData();
             closeSettings();
+            loadDiscovery(); // Reload trends if key was added
         }
 
         function closeSources() {

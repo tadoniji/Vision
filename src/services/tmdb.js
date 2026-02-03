@@ -84,4 +84,26 @@ async function getSeason(tvId, seasonNumber, apiKey) {
     }
 }
 
-module.exports = { getPoster, searchMulti, getDetails, getSeason };
+async function getTrending(apiKey) {
+    if (!apiKey) return [];
+    try {
+        const url = `${TMDB_BASE_URL}/trending/all/week?api_key=${apiKey}&language=fr-FR`;
+        const { data } = await axios.get(url);
+        return data.results;
+    } catch (error) {
+        return [];
+    }
+}
+
+async function getPopular(type, apiKey) {
+    if (!apiKey) return [];
+    try {
+        const url = `${TMDB_BASE_URL}/${type}/popular?api_key=${apiKey}&language=fr-FR&page=1`;
+        const { data } = await axios.get(url);
+        return data.results.map(r => ({ ...r, media_type: type })); // Force media_type
+    } catch (error) {
+        return [];
+    }
+}
+
+module.exports = { getPoster, searchMulti, getDetails, getSeason, getTrending, getPopular };

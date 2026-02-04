@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Data & Config (User specific)
+data/
+*.log
+*.sqlite
+*.db
+
+# Env
+.env
+
+# System
+.DS_Store
+Thumbs.db

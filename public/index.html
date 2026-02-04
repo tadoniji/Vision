@@ -720,21 +720,57 @@
                 if (currentMedia.type === 'movie') {
                     targetEp = data.results[0];
                 } else {
-                    list.innerHTML += `<h4>Sélectionnez le fichier source</h4>`;
+                    // Filter attempts
+                    const targetSeason = currentMedia.season;
+                    const targetEpNum = currentMedia.episode;
+                    
+                    let filtered = data.results;
+                    
+                    // Try to filter by exact season/episode
+                    const matches = data.results.filter(ep => {
+                        // Normalize season string from provider (e.g. "Saison 1", "saison1", "1")
+                        // We check if the provider season string CONTAINS the target number
+                        // This is loose but usually works for "Saison X".
+                        // Be careful with "Saison 11" containing "1".
+                        
+                        // Better parsing: extract first number
+                        const epSeasonStr = (ep.season || "").toLowerCase();
+                        const epSeasonNum = parseInt(epSeasonStr.replace(/\D/g, '')) || 1; // Default to 1 if parsing fails
+                        
+                        // Normalize episode number
+                        const epNum = parseInt(ep.episode);
+                        
+                        return epSeasonNum === targetSeason && epNum === targetEpNum;
+                    });
+                    
+                    if (matches.length > 0) {
+                        filtered = matches;
+                        list.innerHTML = `<h4>Saison ${targetSeason} Épisode ${targetEpNum} (${matches.length} options)</h4>`;
+                    } else {
+                        list.innerHTML = `<h4>Tous les épisodes (Sélection auto échouée)</h4>`;
+                    }
+
                     const subList = document.createElement('div');
                     subList.style.display = 'flex';
                     subList.style.flexWrap = 'wrap';
                     subList.style.gap = '10px';
                     
-                    data.results.forEach(ep => {
-                        const btn = document.createElement('button');
-                        btn.className = 'watch-btn';
-                        btn.style.background = '#334155';
-                        btn.innerText = `${ep.season ? ep.season : ''} ${ep.episode}`;
-                        btn.onclick = () => {
-                            playVideo(ep.providers[0].url);
-                        };
-                        subList.appendChild(btn);
+                    if (filtered.length === 0) {
+                         list.innerHTML += "<div>Aucun épisode correspondant trouvé dans la source.</div>";
+                    }
+
+                    filtered.forEach(ep => {
+                        ep.providers.forEach(prov => {
+                            const btn = document.createElement('button');
+                            btn.className = 'watch-btn';
+                            btn.style.background = '#334155';
+                            // Label: [VF] Lecteur 1
+                            btn.innerText = `[${ep.type || '?'}] ${prov.name}`;
+                            btn.onclick = () => {
+                                playVideo(prov.url);
+                            };
+                            subList.appendChild(btn);
+                        });
                     });
                     list.appendChild(subList);
                     return;

@@ -1,43 +1,23 @@
---- Log started at 2026-02-04T00:03:18.935Z ---
-[2026-02-04T00:03:19.574Z] [INFO] Serveur Vision lancé sur http://localhost:3000
-[2026-02-04T00:03:27.558Z] [INFO] [AnimeSama] Searching for: Fallout Saison 1 Épisode 1
-[2026-02-04T00:03:27.562Z] [INFO] [Flemmix (Stealth)] Searching for: Fallout Saison 1 Épisode 1
-[2026-02-04T00:03:27.567Z] [INFO] [Yandex Fallback] Searching for: Fallout Saison 1 Épisode 1 stream gratuit
-[2026-02-04T00:03:29.268Z] [INFO] [Flemmix] Navigation vers l'accueil pour recherche POST: Fallout Saison 1 Épisode 1
-[2026-02-04T00:03:29.491Z] [INFO] [AnimeSama] Found 276 results.
-[2026-02-04T00:03:30.011Z] [INFO] [Flemmix] Attente des résultats...
-[2026-02-04T00:03:31.976Z] [INFO] [Flemmix] Found 0 results.
-[2026-02-04T00:03:32.511Z] [INFO] [Yandex] Found 10 results.
-[2026-02-04T00:03:32.512Z] [INFO] [Yandex] Fetching posters from TMDB for 10 items...
-[2026-02-04T00:04:34.633Z] [INFO] [Yandex (Generic)] Crawling external site: https://fr.french-stream.sbs/films/8054-fallout-streaming-complet.html
-[2026-02-04T00:04:39.480Z] [INFO] [Yandex] Extracted 1 streams/links from https://fr.french-stream.sbs/films/8054-fallout-streaming-complet.html
-[2026-02-04T00:05:06.058Z] [INFO] [AnimeSama] Searching for: Fallout Saison 1 Épisode 1
-[2026-02-04T00:05:06.062Z] [INFO] [Flemmix (Stealth)] Searching for: Fallout Saison 1 Épisode 1
-[2026-02-04T00:05:06.063Z] [INFO] [Yandex Fallback] Searching for: Fallout Saison 1 Épisode 1 stream gratuit
-[2026-02-04T00:05:07.724Z] [INFO] [Flemmix] Navigation vers l'accueil pour recherche POST: Fallout Saison 1 Épisode 1
-[2026-02-04T00:05:07.917Z] [INFO] [AnimeSama] Found 276 results.
-[2026-02-04T00:05:08.475Z] [INFO] [Flemmix] Attente des résultats...
-[2026-02-04T00:05:10.043Z] [INFO] [Flemmix] Found 0 results.
-[2026-02-04T00:05:10.921Z] [INFO] [Yandex] Found 10 results.
-[2026-02-04T00:05:10.922Z] [INFO] [Yandex] Fetching posters from TMDB for 10 items...
-[2026-02-04T00:05:21.796Z] [INFO] [AnimeSama] Fetching catalogue: https://anime-sama.si/catalogue/digimon/
-[2026-02-04T00:05:22.002Z] [INFO] [AnimeSama] Found 0 seasons/versions.
-[2026-02-04T00:05:22.003Z] [INFO] [AnimeSama] No seasons found, trying direct parsing.
-[2026-02-04T00:05:26.723Z] [INFO] [AnimeSama] Searching for: Fallout Saison 1 Épisode 1
-[2026-02-04T00:05:26.726Z] [INFO] [Flemmix (Stealth)] Searching for: Fallout Saison 1 Épisode 1
-[2026-02-04T00:05:26.727Z] [INFO] [Yandex Fallback] Searching for: Fallout Saison 1 Épisode 1 stream gratuit
-[2026-02-04T00:05:28.386Z] [INFO] [Flemmix] Navigation vers l'accueil pour recherche POST: Fallout Saison 1 Épisode 1
-[2026-02-04T00:05:28.514Z] [INFO] [AnimeSama] Found 276 results.
-[2026-02-04T00:05:29.107Z] [INFO] [Flemmix] Attente des résultats...
-[2026-02-04T00:05:29.611Z] [INFO] [AnimeSama] Searching for: Fallout Saison 1 Épisode 1
-[2026-02-04T00:05:29.613Z] [INFO] [Flemmix (Stealth)] Searching for: Fallout Saison 1 Épisode 1
-[2026-02-04T00:05:29.613Z] [INFO] [Yandex Fallback] Searching for: Fallout Saison 1 Épisode 1 stream gratuit
-[2026-02-04T00:05:29.727Z] [INFO] [Flemmix] Navigation vers l'accueil pour recherche POST: Fallout Saison 1 Épisode 1
-[2026-02-04T00:05:29.817Z] [INFO] [AnimeSama] Found 276 results.
-[2026-02-04T00:05:30.385Z] [INFO] [Flemmix] Attente des résultats...
-[2026-02-04T00:05:31.456Z] [INFO] [Flemmix] Found 0 results.
-[2026-02-04T00:05:32.472Z] [INFO] [Flemmix] Found 0 results.
-[2026-02-04T00:05:32.814Z] [INFO] [Yandex] Found 10 results.
-[2026-02-04T00:05:32.815Z] [INFO] [Yandex] Fetching posters from TMDB for 10 items...
-[2026-02-04T00:05:33.103Z] [INFO] [Yandex] Found 10 results.
-[2026-02-04T00:05:33.104Z] [INFO] [Yandex] Fetching posters from TMDB for 10 items...
+--- Log started at 2026-02-04T00:10:13.773Z ---
+[2026-02-04T00:10:14.387Z] [INFO] Serveur Vision lancé sur http://localhost:3000
+[2026-02-04T00:10:56.939Z] [INFO] [AnimeSama] Searching for: Fallout Saison 1 Épisode 1
+[2026-02-04T00:10:56.943Z] [INFO] [Flemmix (Stealth)] Searching for: Fallout Saison 1 Épisode 1
+[2026-02-04T00:10:56.947Z] [INFO] [Yandex Fallback] Searching for: Fallout Saison 1 Épisode 1 stream gratuit
+[2026-02-04T00:10:58.624Z] [INFO] [Flemmix] Navigation vers l'accueil pour recherche POST: Fallout Saison 1 Épisode 1
+[2026-02-04T00:10:58.811Z] [INFO] [AnimeSama] Found 276 results.
+[2026-02-04T00:11:00.620Z] [INFO] [Flemmix] Attente des résultats...
+[2026-02-04T00:11:01.762Z] [INFO] [Yandex] Found 10 results.
+[2026-02-04T00:11:01.763Z] [INFO] [Yandex] Fetching posters from TMDB for 10 items...
+[2026-02-04T00:11:02.976Z] [INFO] [Flemmix] Found 0 results.
+[2026-02-04T00:11:16.987Z] [INFO] [AnimeSama] Fetching catalogue: https://anime-sama.si/catalogue/existence/
+[2026-02-04T00:11:17.242Z] [INFO] [AnimeSama] Found 0 seasons/versions.
+[2026-02-04T00:11:17.242Z] [INFO] [AnimeSama] No seasons found, trying direct parsing.
+[2026-02-04T00:11:23.254Z] [INFO] [AnimeSama] Searching for: Fallout Saison 1 Épisode 1
+[2026-02-04T00:11:23.258Z] [INFO] [Flemmix (Stealth)] Searching for: Fallout Saison 1 Épisode 1
+[2026-02-04T00:11:23.260Z] [INFO] [Yandex Fallback] Searching for: Fallout Saison 1 Épisode 1 stream gratuit
+[2026-02-04T00:11:24.929Z] [INFO] [Flemmix] Navigation vers l'accueil pour recherche POST: Fallout Saison 1 Épisode 1
+[2026-02-04T00:11:25.028Z] [INFO] [AnimeSama] Found 276 results.
+[2026-02-04T00:11:26.648Z] [INFO] [Flemmix] Attente des résultats...
+[2026-02-04T00:11:28.033Z] [INFO] [Yandex] Found 10 results.
+[2026-02-04T00:11:28.033Z] [INFO] [Yandex] Fetching posters from TMDB for 10 items...
+[2026-02-04T00:11:28.478Z] [INFO] [Flemmix] Found 0 results.

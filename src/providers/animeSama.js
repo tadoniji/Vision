@@ -149,7 +149,7 @@ async function fetchEpisodes(slug) {
             }
         }
 
-        return Array.from(episodesMap.values());
+        return Array.from(episodesMap.values()).filter(ep => ep.providers.length > 0);
 
     } catch (error) {
         console.error("Error in fetchEpisodes:", error);

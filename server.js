@@ -94,6 +94,38 @@ fastify.get('/api/tmdb/popular/:type', async (request, reply) => {
     return await tmdbService.getPopular(type, config.tmdbApiKey);
 });
 
+// --- TMDB AUTH & ACTIONS ---
+
+fastify.get('/api/tmdb/auth/token', async (request, reply) => {
+    const config = getConfig();
+    if (!config.tmdbApiKey) return { error: "Clé API manquante" };
+    const token = await tmdbService.getRequestToken(config.tmdbApiKey);
+    return { token };
+});
+
+fastify.post('/api/tmdb/auth/session', async (request, reply) => {
+    const { requestToken } = request.body;
+    const config = getConfig();
+    if (!config.tmdbApiKey) return { error: "Clé API manquante" };
+    
+    const sessionId = await tmdbService.createSession(config.tmdbApiKey, requestToken);
+    if (sessionId) {
+        config.tmdbSessionId = sessionId;
+        saveConfig(config);
+        return { success: true, sessionId };
+    }
+    return { error: "Échec création session" };
+});
+
+fastify.post('/api/tmdb/rate', async (request, reply) => {
+    const { type, id, value } = request.body;
+    const config = getConfig();
+    if (!config.tmdbApiKey || !config.tmdbSessionId) return { error: "Non connecté à TMDB" };
+
+    const success = await tmdbService.rateMedia(type, id, value, config.tmdbSessionId, config.tmdbApiKey);
+    return { success };
+});
+
 // --- NOTEPAD ROUTES ---
 
 fastify.get('/api/notes', async (request, reply) => {

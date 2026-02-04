@@ -106,4 +106,33 @@ async function getPopular(type, apiKey) {
     }
 }
 
-module.exports = { getPoster, searchMulti, getDetails, getSeason, getTrending, getPopular };
+// --- AUTH & ACTIONS ---
+
+async function getRequestToken(apiKey) {
+    try {
+        const { data } = await axios.get(`${TMDB_BASE_URL}/authentication/token/new?api_key=${apiKey}`);
+        return data.request_token;
+    } catch (e) { return null; }
+}
+
+async function createSession(apiKey, requestToken) {
+    try {
+        const { data } = await axios.post(`${TMDB_BASE_URL}/authentication/session/new?api_key=${apiKey}`, {
+            request_token: requestToken
+        });
+        return data.session_id;
+    } catch (e) { return null; }
+}
+
+async function rateMedia(type, id, value, sessionId, apiKey) {
+    try {
+        const url = `${TMDB_BASE_URL}/${type}/${id}/rating?api_key=${apiKey}&session_id=${sessionId}`;
+        await axios.post(url, { value: value });
+        return true;
+    } catch (e) {
+        console.error("Rate Error:", e.response ? e.response.data : e.message);
+        return false;
+    }
+}
+
+module.exports = { getPoster, searchMulti, getDetails, getSeason, getTrending, getPopular, getRequestToken, createSession, rateMedia };

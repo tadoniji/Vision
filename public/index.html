@@ -154,6 +154,14 @@
         .details-title { font-size: 2.5rem; font-weight: 800; margin: 0 0 10px 0; }
         .details-overview { line-height: 1.6; color: #cbd5e1; margin-bottom: 20px; }
         
+        .rating-box {
+            display: inline-flex; align-items: center; gap: 10px;
+            background: rgba(255,255,255,0.1); padding: 5px 15px; border-radius: 20px;
+            margin-bottom: 15px; cursor: pointer; transition: background 0.2s;
+        }
+        .rating-box:hover { background: rgba(255,255,255,0.2); }
+        .rating-star { color: #f59e0b; font-size: 1.2rem; }
+
         .season-list { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px; }
         .season-chip {
             padding: 8px 16px; background: #334155; border-radius: 20px; cursor: pointer; white-space: nowrap;
@@ -326,13 +334,16 @@
         <div class="modal">
             <h2>Configuration</h2>
             <div class="form-group">
-                <label>Clé API TMDB (Requise pour les métadonnées)</label>
+                <label>Clé API TMDB</label>
                 <input type="text" id="tmdb-key-input" placeholder="Insérer votre clé API v3">
             </div>
-            <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:20px;">
-                Vous pouvez obtenir une clé gratuitement sur themoviedb.org.
-            </p>
             
+            <div id="tmdb-auth-section" style="margin-bottom:20px; border:1px solid #334155; padding:10px; border-radius:6px;">
+                <label style="display:block; margin-bottom:5px; color:#94a3b8;">Compte TMDB</label>
+                <div id="auth-status" style="margin-bottom:10px; color:var(--seen-color);"></div>
+                <button id="auth-btn" class="primary-btn" onclick="startTmdbAuth()" style="width:100%; background:#0ea5e9; border:none; padding:10px; border-radius:6px; color:white; cursor:pointer;">Se connecter à TMDB</button>
+            </div>
+
             <div class="form-group">
                  <label>Providers Activés</label>
                  <div id="providers-settings-list" style="max-height:150px; overflow-y:auto; border:1px solid #334155; padding:10px; border-radius:6px;"></div>
@@ -370,6 +381,7 @@
             try {
                 const res = await fetch('/api/config');
                 config = await res.json();
+                updateAuthStatus();
             } catch(e) { console.error(e); }
         }
 
@@ -431,6 +443,58 @@
                 <div class="media-title-overlay">${title}</div>
             `;
             return card;
+        }
+
+        // --- AUTH TMDB ---
+        function updateAuthStatus() {
+            const statusDiv = document.getElementById('auth-status');
+            const authBtn = document.getElementById('auth-btn');
+            
+            if (config.tmdbSessionId) {
+                statusDiv.innerText = "Connecté (Session Active)";
+                authBtn.innerText = "Changer de compte / Reconnecter";
+                authBtn.style.background = "#334155";
+            } else {
+                statusDiv.innerText = "Non connecté";
+                authBtn.innerText = "Se connecter à TMDB";
+                authBtn.style.background = "#0ea5e9";
+            }
+        }
+
+        async function startTmdbAuth() {
+            if (!config.tmdbApiKey) return alert("Veuillez d'abord entrer votre clé API et Sauvegarder.");
+            
+            try {
+                const res = await fetch('/api/tmdb/auth/token');
+                const data = await res.json();
+                
+                if (data.token) {
+                    const url = `https://www.themoviedb.org/authenticate/${data.token}?redirect_to=http://localhost:3000/`;
+                    const popup = window.open(url, '_blank', 'width=800,height=600');
+                    
+                    // Ask user to confirm
+                    const confirmed = confirm("Une fenêtre s'est ouverte pour valider la connexion sur TMDB.\n\nUne fois que vous avez cliqué sur 'Approve' sur le site de TMDB, cliquez sur OK ici.");
+                    
+                    if (confirmed) {
+                        const sessionRes = await fetch('/api/tmdb/auth/session', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ requestToken: data.token })
+                        });
+                        const sessionData = await sessionRes.json();
+                        
+                        if (sessionData.success) {
+                            alert("Connexion réussie !");
+                            config.tmdbSessionId = sessionData.sessionId;
+                            updateAuthStatus();
+                        } else {
+                            alert("Échec de la connexion. Avez-vous bien approuvé le token ?");
+                        }
+                    }
+                }
+            } catch (e) {
+                alert("Erreur auth: " + e.message);
+            }
         }
 
         // --- NAVIGATION & UI ---
@@ -539,12 +603,26 @@
             if (type === 'movie') {
                 actionButton = `<button class="watch-btn" onclick="findSources('${data.title.replace(/'/g, "\'")}', 'movie')">REGARDER LE FILM</button>`;
             }
+            
+            // Rating Block
+            let ratingHtml = '';
+            if (config.tmdbSessionId) {
+                ratingHtml = `
+                    <div class="rating-box" onclick="rateCurrentMedia()">
+                        <span class="rating-star">★</span>
+                        <span>Noter</span>
+                    </div>
+                `;
+            }
 
             header.innerHTML = `
                 ${img ? `<img src="${img}" class="details-poster">` : ''}
                 <div class="details-info">
                     <h2 class="details-title">${data.title || data.name}</h2>
                     <div style="margin-bottom:15px; color:#94a3b8;">${data.release_date || data.first_air_date || ''} • ${data.genres.map(g=>g.name).join(', ')}</div>
+                    
+                    ${ratingHtml}
+                    
                     <div class="details-overview">${data.overview}</div>
                     ${actionButton}
                 </div>
@@ -558,6 +636,30 @@
             }
 
             showDetails();
+        }
+        
+        async function rateCurrentMedia() {
+            if (!currentMedia) return;
+            const rating = prompt("Notez ce titre (de 0.5 à 10) :");
+            if (rating) {
+                const val = parseFloat(rating);
+                if (val >= 0.5 && val <= 10) {
+                    const res = await fetch('/api/tmdb/rate', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            type: currentMedia.type,
+                            id: currentMedia.id,
+                            value: val
+                        })
+                    });
+                    const d = await res.json();
+                    if(d.success) alert("Note envoyée !");
+                    else alert("Erreur lors de la notation.");
+                } else {
+                    alert("Note invalide (doit être entre 0.5 et 10)");
+                }
+            }
         }
 
         function renderSeasons(tvId, seasons) {
@@ -669,15 +771,15 @@
         }
 
         function renderSourcesList() {
-            const list = document.getElementById('sources-list');
-            list.innerHTML = '';
-
-            if (currentSourceResults.length === 0) {
+             const list = document.getElementById('sources-list');
+             list.innerHTML = '';
+             
+             if (currentSourceResults.length === 0) {
                 list.innerHTML = '<div style="text-align:center;">Aucune source trouvée pour cette recherche.</div>';
                 return;
-            }
+             }
 
-            currentSourceResults.forEach(source => {
+             currentSourceResults.forEach(source => {
                 const item = document.createElement('div');
                 item.className = 'source-item';
                 item.innerHTML = `
@@ -708,13 +810,14 @@
                 const res = await fetch(`/api/anime/${source.provider}/${encodeURIComponent(source.slug)}`);
                 const data = await res.json();
                 
+                // Re-add Back button in case of success
                 list.innerHTML = `
                     <div style="margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;">
-                        <button class="icon-btn" onclick="renderSourcesList()" style="font-size:0.9rem; background:#334155; border-radius:6px; padding:5px 10px;">← Retour</button>
-                        <small>${source.providerName}</small>
+                         <button class="icon-btn" onclick="renderSourcesList()" style="font-size:0.9rem; background:#334155; border-radius:6px; padding:5px 10px;">← Retour</button>
+                         <small>${source.providerName}</small>
                     </div>
                 `;
-                
+
                 let targetEp = null;
                 
                 if (currentMedia.type === 'movie') {
@@ -728,26 +831,17 @@
                     
                     // Try to filter by exact season/episode
                     const matches = data.results.filter(ep => {
-                        // Normalize season string from provider (e.g. "Saison 1", "saison1", "1")
-                        // We check if the provider season string CONTAINS the target number
-                        // This is loose but usually works for "Saison X".
-                        // Be careful with "Saison 11" containing "1".
-                        
-                        // Better parsing: extract first number
                         const epSeasonStr = (ep.season || "").toLowerCase();
-                        const epSeasonNum = parseInt(epSeasonStr.replace(/\D/g, '')) || 1; // Default to 1 if parsing fails
-                        
-                        // Normalize episode number
+                        const epSeasonNum = parseInt(epSeasonStr.replace(/\D/g, '')) || 1; 
                         const epNum = parseInt(ep.episode);
-                        
                         return epSeasonNum === targetSeason && epNum === targetEpNum;
                     });
                     
                     if (matches.length > 0) {
                         filtered = matches;
-                        list.innerHTML = `<h4>Saison ${targetSeason} Épisode ${targetEpNum} (${matches.length} options)</h4>`;
+                        list.innerHTML += `<h4>Saison ${targetSeason} Épisode ${targetEpNum} (${matches.length} options)</h4>`;
                     } else {
-                        list.innerHTML = `<h4>Tous les épisodes (Sélection auto échouée)</h4>`;
+                        list.innerHTML += `<h4>Tous les épisodes (Sélection auto échouée)</h4>`;
                     }
 
                     const subList = document.createElement('div');
@@ -785,7 +879,7 @@
             } catch(e) {
                 list.innerHTML = `
                     <div style="margin-bottom:10px;">
-                        <button class="icon-btn" onclick="renderSourcesList()" style="font-size:0.9rem; background:#334155; border-radius:6px; padding:5px 10px;">← Retour</button>
+                         <button class="icon-btn" onclick="renderSourcesList()" style="font-size:0.9rem; background:#334155; border-radius:6px; padding:5px 10px;">← Retour</button>
                     </div>
                     <div>Erreur chargement lecteur: ${e.message}</div>
                 `;
@@ -855,6 +949,7 @@
                     list.appendChild(row);
                 });
             }
+            updateAuthStatus();
         }
 
         function closeSettings() {

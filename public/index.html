@@ -350,6 +350,7 @@
         let config = {};
         let progress = {};
         let currentMedia = null; // { type, id, title, season, episode }
+        let currentSourceResults = [];
 
         // --- INIT ---
         window.onload = async () => {
@@ -657,49 +658,69 @@
                 const data = await res.json();
                 
                 document.getElementById('loading-sources').style.display = 'none';
-                const list = document.getElementById('sources-list');
                 
-                if (data.results.length === 0) {
-                    list.innerHTML = '<div style="text-align:center;">Aucune source trouvée pour cette recherche.</div>';
-                    return;
-                }
-
-                data.results.forEach(source => {
-                    const item = document.createElement('div');
-                    item.className = 'source-item';
-                    item.innerHTML = `
-                        <div>
-                            <div style="font-weight:bold;">${source.title}</div>
-                            <div style="font-size:0.8rem; color:#94a3b8;">${source.providerName}</div>
-                        </div>
-                        <div style="color:var(--accent-color);">▶</div>
-                    `;
-                    item.onclick = () => {
-                        if (source.isExternal) window.open(source.url, '_blank');
-                        else launchSource(source);
-                    };
-                    list.appendChild(item);
-                });
+                // Cache results
+                currentSourceResults = data.results || [];
+                renderSourcesList();
 
             } catch(e) {
                 document.getElementById('loading-sources').innerHTML = 'Erreur recherche sources';
             }
         }
 
+        function renderSourcesList() {
+            const list = document.getElementById('sources-list');
+            list.innerHTML = '';
+
+            if (currentSourceResults.length === 0) {
+                list.innerHTML = '<div style="text-align:center;">Aucune source trouvée pour cette recherche.</div>';
+                return;
+            }
+
+            currentSourceResults.forEach(source => {
+                const item = document.createElement('div');
+                item.className = 'source-item';
+                item.innerHTML = `
+                    <div>
+                        <div style="font-weight:bold;">${source.title}</div>
+                        <div style="font-size:0.8rem; color:#94a3b8;">${source.providerName}</div>
+                    </div>
+                    <div style="color:var(--accent-color);">▶</div>
+                `;
+                item.onclick = () => {
+                    if (source.isExternal) window.open(source.url, '_blank');
+                    else launchSource(source);
+                };
+                list.appendChild(item);
+            });
+        }
+
         async function launchSource(source) {
             const list = document.getElementById('sources-list');
-            list.innerHTML = `<div style="text-align:center; padding:20px;">Chargement du lecteur depuis ${source.providerName}...</div>`;
+            list.innerHTML = `
+                <div style="margin-bottom:10px;">
+                    <button class="icon-btn" onclick="renderSourcesList()" style="font-size:0.9rem; background:#334155; border-radius:6px; padding:5px 10px;">← Retour</button>
+                </div>
+                <div style="text-align:center; padding:20px;">Chargement du lecteur depuis ${source.providerName}...</div>
+            `;
 
             try {
                 const res = await fetch(`/api/anime/${source.provider}/${encodeURIComponent(source.slug)}`);
                 const data = await res.json();
+                
+                list.innerHTML = `
+                    <div style="margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;">
+                        <button class="icon-btn" onclick="renderSourcesList()" style="font-size:0.9rem; background:#334155; border-radius:6px; padding:5px 10px;">← Retour</button>
+                        <small>${source.providerName}</small>
+                    </div>
+                `;
                 
                 let targetEp = null;
                 
                 if (currentMedia.type === 'movie') {
                     targetEp = data.results[0];
                 } else {
-                    list.innerHTML = `<h4>Sélectionnez le fichier source (${source.providerName})</h4>`;
+                    list.innerHTML += `<h4>Sélectionnez le fichier source</h4>`;
                     const subList = document.createElement('div');
                     subList.style.display = 'flex';
                     subList.style.flexWrap = 'wrap';
@@ -722,11 +743,16 @@
                 if (targetEp && targetEp.providers && targetEp.providers.length > 0) {
                      playVideo(targetEp.providers[0].url);
                 } else {
-                    list.innerHTML = "Pas de lecteur trouvé.";
+                    list.innerHTML += "Pas de lecteur trouvé.";
                 }
 
             } catch(e) {
-                list.innerHTML = "Erreur chargement lecteur: " + e.message;
+                list.innerHTML = `
+                    <div style="margin-bottom:10px;">
+                        <button class="icon-btn" onclick="renderSourcesList()" style="font-size:0.9rem; background:#334155; border-radius:6px; padding:5px 10px;">← Retour</button>
+                    </div>
+                    <div>Erreur chargement lecteur: ${e.message}</div>
+                `;
             }
         }
 

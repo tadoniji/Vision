@@ -35,36 +35,47 @@ async function fetchEpisodes(slug) {
 
         console.log(`[AnimeSama] Found ${seasons.length} seasons/versions.`);
         
-        const allEpisodes = [];
-
-        // Process each season (limit to first 3 for prototype speed if many, but let's do all or a few)
-        // For the prototype, I'll process ALL, but be aware of rate limits. 
-        // For this demo, let's just do the first 2 to prove it works without spamming.
-        // The user asked for a prototype, so full crawling might be too slow for the chat.
-        // I will process the first one (usually Season 1 VOSTFR) fully.
+        // Fallback: If no seasons found, maybe it's a direct page (Movie or Single Season)
+        if (seasons.length === 0) {
+             console.log("[AnimeSama] No seasons found, trying direct parsing.");
+             // Pseudo-season
+             seasons.push({ name: "Unique", url: "" }); 
+        }
         
-        // Grouping by episode number to merge providers
-        const episodesMap = new Map(); // Key: "Type-EpNum", Value: Object
+        const allEpisodes = [];
+        const episodesMap = new Map();
 
         for (const season of seasons) {
             // Determine Type (VOSTFR, VF, etc.) from URL
-            let type = "UNKNOWN";
-            if (season.url.includes("vostfr")) type = "VOSTFR";
-            else if (season.url.includes("vf")) type = "VF";
-            else if (season.url.includes("kai")) type = "KAI"; // Special case
+            let type = "VF/VOSTFR"; // Default
+            if (season.url) {
+                if (season.url.includes("vostfr")) type = "VOSTFR";
+                else if (season.url.includes("vf")) type = "VF";
+                else if (season.url.includes("kai")) type = "KAI";
+            } else {
+                // Try to guess from catalogue page title or just keep generic
+                if ($('h1').text().toLowerCase().includes('vostfr')) type = "VOSTFR";
+                if ($('h1').text().toLowerCase().includes('vf')) type = "VF";
+            }
+            // ... (rest of logic)
             
             // Construct absolute URL
-            // The season.url is relative, e.g., "saison1/vostfr"
-            // It is relative to the catalogue URL.
-            // But sometimes it might be just "vostfr" if we are already deep? 
-            // Based on analysis: catalogue/one-piece/ + saison1/vostfr
-            
-            const seasonUrl = `${catalogueUrl}${season.url}/`;
-            // console.log(`[AnimeSama] Fetching season: ${season.name} (${seasonUrl})`);
+            // If season.url is empty, use catalogueUrl
+            let seasonUrl = catalogueUrl;
+            if (season.url) {
+                seasonUrl = `${catalogueUrl}${season.url}/`;
+            }
 
             try {
-                const { data: seasonHtml } = await axios.get(seasonUrl);
-                const $season = cheerio.load(seasonHtml);
+                // If it's the "Unique" case, we already have the HTML (catalogueHtml), but to be safe/consistent with loop, 
+                // we can just re-fetch or reuse. Re-fetching is easier for logic flow, but reuse is better.
+                // Let's reuse if url is empty.
+                
+                let $season = $;
+                if (season.url) {
+                    const { data: seasonHtml } = await axios.get(seasonUrl);
+                    $season = cheerio.load(seasonHtml);
+                }
 
                 // Find episodes.js script
                 let episodesScriptUrl = null;
@@ -109,6 +120,9 @@ async function fetchEpisodes(slug) {
                             }
 
                             urls.forEach((url, index) => {
+                                // Filter out YouTube
+                                if (url.includes('youtube.com') || url.includes('youtu.be')) return;
+
                                 const epNum = index + 1;
                                 const id = `${type}-${season.name}-Ep${epNum}`;
                                 

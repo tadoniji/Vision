@@ -21,5 +21,6 @@
             "enabled": true,
             "system": true
         }
-    ]
+    ],
+    "tmdbApiKey": "0e6cf9686697496bc8cafef543dd11fe"
 }

@@ -1,2 +1,55 @@
---- Log started at 2026-02-03T23:43:54.163Z ---
-[2026-02-03T23:43:54.777Z] [INFO] Serveur Vision lancé sur http://localhost:3000
+--- Log started at 2026-02-03T23:55:45.797Z ---
+[2026-02-03T23:55:46.539Z] [INFO] Serveur Vision lancé sur http://localhost:3000
+[2026-02-03T23:55:54.065Z] [INFO] [AnimeSama] Searching for: Zootopie 2
+[2026-02-03T23:55:54.068Z] [INFO] [Flemmix (Stealth)] Searching for: Zootopie 2
+[2026-02-03T23:55:54.075Z] [INFO] [Yandex Fallback] Searching for: Zootopie 2 stream gratuit
+[2026-02-03T23:55:57.036Z] [INFO] [AnimeSama] Found 276 results.
+[2026-02-03T23:55:57.043Z] [INFO] [Flemmix] Navigation vers l'accueil pour recherche POST: Zootopie 2
+[2026-02-03T23:56:00.223Z] [INFO] [Yandex] Found 10 results.
+[2026-02-03T23:56:00.224Z] [INFO] [Yandex] Fetching posters from TMDB for 10 items...
+[2026-02-03T23:56:00.431Z] [INFO] [Flemmix] Attente des résultats...
+[2026-02-03T23:56:02.376Z] [INFO] [Flemmix] Found 0 results.
+[2026-02-03T23:56:09.963Z] [INFO] [AnimeSama] Fetching catalogue: https://anime-sama.si/catalogue/regressor-instruction-manual/
+[2026-02-03T23:56:10.219Z] [INFO] [AnimeSama] Found 0 seasons/versions.
+[2026-02-03T23:56:12.676Z] [INFO] [AnimeSama] Searching for: Zootopie 2
+[2026-02-03T23:56:12.679Z] [INFO] [Flemmix (Stealth)] Searching for: Zootopie 2
+[2026-02-03T23:56:12.681Z] [INFO] [Yandex Fallback] Searching for: Zootopie 2 stream gratuit
+[2026-02-03T23:56:14.460Z] [INFO] [AnimeSama] Found 276 results.
+[2026-02-03T23:56:14.463Z] [INFO] [Flemmix] Navigation vers l'accueil pour recherche POST: Zootopie 2
+[2026-02-03T23:56:15.138Z] [INFO] [Flemmix] Attente des résultats...
+[2026-02-03T23:56:17.063Z] [INFO] [Flemmix] Found 0 results.
+[2026-02-03T23:56:17.612Z] [INFO] [Yandex] Found 10 results.
+[2026-02-03T23:56:17.613Z] [INFO] [Yandex] Fetching posters from TMDB for 10 items...
+[2026-02-03T23:56:22.993Z] [INFO] [AnimeSama] Fetching catalogue: https://anime-sama.si/catalogue/digimon/
+[2026-02-03T23:56:23.191Z] [INFO] [AnimeSama] Found 0 seasons/versions.
+[2026-02-03T23:57:28.936Z] [INFO] [AnimeSama] Searching for: Zootopie 2
+[2026-02-03T23:57:28.940Z] [INFO] [Flemmix (Stealth)] Searching for: Zootopie 2
+[2026-02-03T23:57:28.942Z] [INFO] [Yandex Fallback] Searching for: Zootopie 2 stream gratuit
+[2026-02-03T23:57:30.611Z] [INFO] [Flemmix] Navigation vers l'accueil pour recherche POST: Zootopie 2
+[2026-02-03T23:57:30.803Z] [INFO] [AnimeSama] Found 276 results.
+[2026-02-03T23:57:31.325Z] [INFO] [Flemmix] Attente des résultats...
+[2026-02-03T23:57:33.471Z] [INFO] [Flemmix] Found 0 results.
+[2026-02-03T23:57:33.716Z] [INFO] [Yandex] Found 10 results.
+[2026-02-03T23:57:33.717Z] [INFO] [Yandex] Fetching posters from TMDB for 10 items...
+[2026-02-03T23:58:23.310Z] [INFO] [Yandex (Generic)] Crawling external site: https://fr.french-stream.sbs/films/24187-zootopie-2-streaming-complet.html
+[2026-02-03T23:58:28.127Z] [INFO] [Yandex] Extracted 1 streams/links from https://fr.french-stream.sbs/films/24187-zootopie-2-streaming-complet.html
+[2026-02-03T23:59:25.289Z] [INFO] [AnimeSama] Searching for: Fallout Saison 1 Épisode 1
+[2026-02-03T23:59:25.293Z] [INFO] [Flemmix (Stealth)] Searching for: Fallout Saison 1 Épisode 1
+[2026-02-03T23:59:25.294Z] [INFO] [Yandex Fallback] Searching for: Fallout Saison 1 Épisode 1 stream gratuit
+[2026-02-03T23:59:26.997Z] [INFO] [Flemmix] Navigation vers l'accueil pour recherche POST: Fallout Saison 1 Épisode 1
+[2026-02-03T23:59:27.165Z] [INFO] [AnimeSama] Found 276 results.
+[2026-02-03T23:59:27.482Z] [INFO] [Flemmix] Attente des résultats...
+[2026-02-03T23:59:29.593Z] [INFO] [Flemmix] Found 0 results.
+[2026-02-03T23:59:30.083Z] [INFO] [Yandex] Found 10 results.
+[2026-02-03T23:59:30.084Z] [INFO] [Yandex] Fetching posters from TMDB for 10 items...
+[2026-02-03T23:59:51.730Z] [INFO] [Yandex (Generic)] Crawling external site: https://www.french-streaming.tv/serie/15116999-fallout-saison-1.html
+[2026-02-03T23:59:57.317Z] [INFO] [Yandex] Extracted 1 streams/links from https://www.french-streaming.tv/serie/15116999-fallout-saison-1.html
+[2026-02-04T00:00:03.961Z] [INFO] [AnimeSama] Searching for: Fallout Saison 1 Épisode 1
+[2026-02-04T00:00:03.964Z] [INFO] [Flemmix (Stealth)] Searching for: Fallout Saison 1 Épisode 1
+[2026-02-04T00:00:03.966Z] [INFO] [Yandex Fallback] Searching for: Fallout Saison 1 Épisode 1 stream gratuit
+[2026-02-04T00:00:05.627Z] [INFO] [Flemmix] Navigation vers l'accueil pour recherche POST: Fallout Saison 1 Épisode 1
+[2026-02-04T00:00:05.736Z] [INFO] [AnimeSama] Found 276 results.
+[2026-02-04T00:00:07.659Z] [INFO] [Flemmix] Attente des résultats...
+[2026-02-04T00:00:08.723Z] [INFO] [Yandex] Found 10 results.
+[2026-02-04T00:00:08.724Z] [INFO] [Yandex] Fetching posters from TMDB for 10 items...
+[2026-02-04T00:00:09.697Z] [INFO] [Flemmix] Found 0 results.

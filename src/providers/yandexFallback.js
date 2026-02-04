@@ -152,7 +152,7 @@ async function fetchEpisodes(url) {
                     try {
                         const urlObj = new URL(src);
                         const isRoot = urlObj.pathname === '/' || urlObj.pathname === '';
-                        const isAd = src.includes('google') || src.includes('facebook') || src.includes('amazon') || src.includes('cloudflare');
+                        const isAd = src.includes('google') || src.includes('facebook') || src.includes('amazon') || src.includes('cloudflare') || src.includes('youtube') || src.includes('youtu.be');
 
                         if (!isRoot && !isAd) {
                             // Pour les iframes sur la page, on assume que c'est le contenu principal
@@ -181,7 +181,7 @@ async function fetchEpisodes(url) {
                 const fullText = (text + " " + titleAttr).trim();
                 const href = toAbs(a.getAttribute('href'));
                 
-                if (!href || href === window.location.href || href.includes('javascript') || href.includes('#')) return;
+                if (!href || href === window.location.href || href.includes('javascript') || href.includes('#') || href.includes('youtube') || href.includes('youtu.be')) return;
 
                 let epNum = null;
                 let currentSeason = globalSeason;

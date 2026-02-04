@@ -157,7 +157,7 @@ async function fetchEpisodes(url) {
                 const src = iframe.getAttribute('data-src') || iframe.src;
                 
                 // Filtrage
-                if (src && !src.includes('google') && !src.includes('facebook') && !src.includes('cloudflare')) {
+                if (src && !src.includes('google') && !src.includes('facebook') && !src.includes('cloudflare') && !src.includes('youtube') && !src.includes('youtu.be')) {
                     eps.push({
                         season: "Film/Série",
                         episode: index + 1,

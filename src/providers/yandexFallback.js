@@ -19,7 +19,7 @@ async function getBrowser() {
     });
 }
 
-async function searchAnime(query) {
+async function searchAnime(query, config = {}) {
     console.log(`[Yandex Fallback] Searching for: ${query} stream gratuit`);
     const browser = await getBrowser();
     const context = await browser.newContext({
@@ -101,7 +101,7 @@ async function searchAnime(query) {
 }
 
 // Extracteur Générique : Visite le site et cherche des IFrames/Videos
-async function fetchEpisodes(url) {
+async function fetchEpisodes(url, config = {}) {
     console.log(`[Yandex (Generic)] Crawling external site: ${url}`);
     
     if (!url.startsWith('http')) {

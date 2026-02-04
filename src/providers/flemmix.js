@@ -24,9 +24,9 @@ function cleanTitle(text) {
     return text.replace(/\n/g, ' ').trim();
 }
 
-async function performSearch(page, query) {
+async function performSearch(page, query, baseUrl) {
     console.log(`[Flemmix] Navigation vers l'accueil pour recherche POST: ${query}`);
-    await page.goto('https://flemmix.irish/');
+    await page.goto(baseUrl);
     
     // Attente du champ de recherche
     try {
@@ -78,7 +78,8 @@ async function performSearch(page, query) {
     });
 }
 
-async function searchAnime(query) {
+async function searchAnime(query, config = {}) {
+    const baseUrl = config.baseUrl || 'https://flemmix.irish';
     console.log(`[Flemmix (Stealth)] Searching for: ${query}`);
     const browser = await getBrowser();
     const context = await browser.newContext({
@@ -98,7 +99,7 @@ async function searchAnime(query) {
 
     try {
         // Recherche via le formulaire
-        let results = await performSearch(page, query);
+        let results = await performSearch(page, query, baseUrl);
 
         // Si 0 résultat et que la query a plusieurs mots, on essaie avec le dernier mot
         if (results.length === 0 && query.includes(' ')) {
@@ -106,7 +107,7 @@ async function searchAnime(query) {
             const simpleQuery = words[words.length - 1]; // "Lorax"
             if (simpleQuery.length > 3) {
                 console.log(`[Flemmix] Aucun résultat exact. Tentative avec : "${simpleQuery}"`);
-                results = await performSearch(page, simpleQuery);
+                results = await performSearch(page, simpleQuery, baseUrl);
             }
         }
 
@@ -121,11 +122,15 @@ async function searchAnime(query) {
     }
 }
 
-async function fetchEpisodes(url) {
+async function fetchEpisodes(url, config = {}) {
+    const baseUrl = config.baseUrl || 'https://flemmix.irish';
     console.log(`[Flemmix (Stealth)] Fetching episodes for: ${url}`);
     
     if (!url.startsWith('http')) {
-        url = `https://flemmix.irish/${decodeURIComponent(url)}`;
+        // Supprimer le slash initial si présent pour éviter double slash
+        const cleanUrl = url.startsWith('/') ? url.substring(1) : url;
+        const finalBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+        url = `${finalBase}${decodeURIComponent(cleanUrl)}`;
     } else {
         url = decodeURIComponent(url);
     }

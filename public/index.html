@@ -779,15 +779,18 @@
                 return;
              }
 
-             currentSourceResults.forEach(source => {
+             currentSourceResults.forEach((source, idx) => {
                 const item = document.createElement('div');
                 item.className = 'source-item';
                 item.innerHTML = `
-                    <div>
+                    <div style="flex:1;">
                         <div style="font-weight:bold;">${source.title}</div>
                         <div style="font-size:0.8rem; color:#94a3b8;">${source.providerName}</div>
                     </div>
-                    <div style="color:var(--accent-color);">▶</div>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <button class="icon-btn" onclick="event.stopPropagation(); editSourceLink(${idx})" title="Modifier le lien" style="font-size:1rem; padding:5px;">✏️</button>
+                        <div style="color:var(--accent-color); font-size:1.2rem;">▶</div>
+                    </div>
                 `;
                 item.onclick = () => {
                     if (source.isExternal) window.open(source.url, '_blank');
@@ -795,6 +798,16 @@
                 };
                 list.appendChild(item);
             });
+        }
+
+        function editSourceLink(idx) {
+            const source = currentSourceResults[idx];
+            const newUrl = prompt("Modifier le lien de la source :", source.url || source.slug);
+            if (newUrl && newUrl.trim() !== "") {
+                if (source.isExternal) source.url = newUrl.trim();
+                else source.slug = newUrl.trim();
+                alert("Lien mis à jour pour cette session.");
+            }
         }
 
         async function launchSource(source) {
@@ -942,9 +955,22 @@
             if (config.providers) {
                 config.providers.forEach((p, idx) => {
                     const row = document.createElement('div');
+                    row.style.marginBottom = "15px";
+                    row.style.padding = "10px";
+                    row.style.background = "#1e293b";
+                    row.style.borderRadius = "6px";
+                    
                     row.innerHTML = `
-                        <input type="checkbox" ${p.enabled ? 'checked' : ''} id="prov-${idx}">
-                        <label for="prov-${idx}" style="display:inline; color:white;">${p.name}</label>
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                            <label for="prov-${idx}" style="color:white; font-weight:bold;">${p.name}</label>
+                            <input type="checkbox" ${p.enabled ? 'checked' : ''} id="prov-${idx}">
+                        </div>
+                        <div style="display:${p.type === 'scraper' ? 'block' : 'none'};">
+                            <label style="font-size:0.75rem; color:#94a3b8; display:block; margin-bottom:4px;">Lien de la source (Base URL)</label>
+                            <input type="text" id="prov-url-${idx}" value="${p.baseUrl || ''}" 
+                                   style="width:100%; background:#0f172a; border:1px solid #334155; color:white; padding:5px; border-radius:4px; font-size:0.85rem;"
+                                   placeholder="https://...">
+                        </div>
                     `;
                     list.appendChild(row);
                 });
@@ -962,6 +988,9 @@
                 config.providers.forEach((p, idx) => {
                     const cb = document.getElementById(`prov-${idx}`);
                     if (cb) p.enabled = cb.checked;
+                    
+                    const urlInput = document.getElementById(`prov-url-${idx}`);
+                    if (urlInput) p.baseUrl = urlInput.value.trim();
                 });
             }
             saveConfigData();

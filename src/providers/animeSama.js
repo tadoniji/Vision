@@ -2,10 +2,9 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const vm = require('vm');
 
-const BASE_URL = 'https://anime-sama.si';
-
-async function fetchEpisodes(slug) {
-    const catalogueUrl = `${BASE_URL}/catalogue/${slug}/`;
+async function fetchEpisodes(slug, config = {}) {
+    const baseUrl = config.baseUrl || 'https://anime-sama.fr';
+    const catalogueUrl = `${baseUrl}/catalogue/${slug}/`;
     console.log(`[AnimeSama] Fetching catalogue: ${catalogueUrl}`);
 
     try {
@@ -158,8 +157,9 @@ async function fetchEpisodes(slug) {
 }
 
 
-async function searchAnime(query) {
-    const searchUrl = `${BASE_URL}/template-php/defaut/fetch.php`;
+async function searchAnime(query, config = {}) {
+    const baseUrl = config.baseUrl || 'https://anime-sama.fr';
+    const searchUrl = `${baseUrl}/template-php/defaut/fetch.php`;
     console.log(`[AnimeSama] Searching for: ${query}`);
 
     try {
@@ -169,8 +169,8 @@ async function searchAnime(query) {
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                    'Referer': 'https://anime-sama.si/',
-                    'Origin': 'https://anime-sama.si',
+                    'Referer': `${baseUrl}/`,
+                    'Origin': `${baseUrl}`,
                     'X-Requested-With': 'XMLHttpRequest'
                 }
             }

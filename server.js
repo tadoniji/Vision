@@ -180,7 +180,7 @@ fastify.post('/api/sources', async (request, reply) => {
                 // MAIS, le but est de trouver le lien direct si possible.
                 // Simplification pour ce prototype : On retourne les résultats de recherche du provider.
                 // L'utilisateur cliquera sur le bon résultat provider pour lancer le player existant.
-                results = await SYSTEM_PROVIDERS[providerConfig.id].searchAnime(query);
+                results = await SYSTEM_PROVIDERS[providerConfig.id].searchAnime(query, providerConfig);
             } else if (providerConfig.type === 'custom') {
                 const searchUrl = providerConfig.url.replace('{query}', encodeURIComponent(query));
                 results = [{
@@ -218,8 +218,10 @@ fastify.get('/api/anime/:provider/:slug', async (request, reply) => {
   }
 
   try {
+    const config = getConfig();
+    const providerConfig = config.providers.find(p => p.id === provider);
     // console.log(`Extraction via ${provider} pour : ${slug}`);
-    const episodes = await SYSTEM_PROVIDERS[provider].fetchEpisodes(slug);
+    const episodes = await SYSTEM_PROVIDERS[provider].fetchEpisodes(slug, providerConfig);
     return { count: episodes.length, results: episodes };
   } catch (err) {
     fastify.log.error(err);

@@ -12,7 +12,7 @@ import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.annotation.OptIn
+import kotlin.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -112,9 +112,17 @@ fun VisionApp() {
     // State global pour le lien vidéo trouvé
     var videoUrl by remember { mutableStateOf<String?>(null) }
     
+    // Config State
+    var animeSamaBaseUrl by remember { mutableStateOf("https://anime-sama.fr") }
+    var showGlobalSettings by remember { mutableStateOf(false) }
+
     // Scraper State
     var scrapeTargetUrl by remember { mutableStateOf<String?>(null) }
     var isScraping by remember { mutableStateOf(false) }
+
+    // Edit URL State
+    var showUrlEditor by remember { mutableStateOf(false) }
+    var urlToEdit by remember { mutableStateOf("") }
 
     MaterialTheme(
         colorScheme = darkColorScheme(
@@ -124,6 +132,60 @@ fun VisionApp() {
             primary = Color(0xFF38BDF8)
         )
     ) {
+        // --- GLOBAL SETTINGS ---
+        if (showGlobalSettings) {
+            AlertDialog(
+                onDismissRequest = { showGlobalSettings = false },
+                title = { Text("Paramètres") },
+                text = {
+                    Column {
+                        Text("Source par défaut", style = MaterialTheme.typography.labelMedium)
+                        OutlinedTextField(
+                            value = animeSamaBaseUrl,
+                            onValueChange = { animeSamaBaseUrl = it },
+                            label = { Text("Base URL AnimeSama") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = { showGlobalSettings = false }) {
+                        Text("Fermer")
+                    }
+                }
+            )
+        }
+
+        // --- URL EDITOR ---
+        if (showUrlEditor) {
+            AlertDialog(
+                onDismissRequest = { showUrlEditor = false },
+                title = { Text("Modifier le lien source") },
+                text = {
+                    OutlinedTextField(
+                        value = urlToEdit,
+                        onValueChange = { urlToEdit = it },
+                        label = { Text("URL de la page source") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        showUrlEditor = false
+                        scrapeTargetUrl = urlToEdit
+                        isScraping = true
+                    }) {
+                        Text("Lancer")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showUrlEditor = false }) {
+                        Text("Annuler")
+                    }
+                }
+            )
+        }
+
         // --- THE INVISIBLE ENGINE (WebView) ---
         if (scrapeTargetUrl != null) {
             HeadlessScraper(
@@ -144,8 +206,9 @@ fun VisionApp() {
         }
 
         NavHost(navController = navController, startDestination = "home") {
-            composable("home") { HomeScreen(navController) }
+            composable("home") { HomeScreen(navController, onOpenSettings = { showGlobalSettings = true }) }
             
+            @OptIn(ExperimentalMaterial3Api::class)
             composable("detail/{type}/{id}/{title}/{poster}") { backStackEntry ->
                 val type = backStackEntry.arguments?.getString("type") ?: "movie"
                 val id = backStackEntry.arguments?.getString("id")?.toInt() ?: 0
@@ -158,15 +221,17 @@ fun VisionApp() {
                     id = id, 
                     title = title, 
                     posterPath = poster,
+                    baseUrl = animeSamaBaseUrl,
                     onPlayEpisode = { episode, seasonNum ->
                         // CONSTRUCTION INTELLIGENTE DE L'URL (Prototype AnimeSama)
                         val slug = title.lowercase().replace(" ", "-").replace(":", "").replace("'", "")
-                        // Ex: https://anime-sama.fr/catalogue/arcane/saison1/vostfr/episode1
                         // Note: C'est une heuristique simple pour le prototype.
-                        val target = "https://anime-sama.fr/catalogue/$slug/saison${seasonNum}/vostfr/episode${episode.episode_number}"
+                        val target = "${baseUrl}/catalogue/$slug/saison${seasonNum}/vostfr/episode${episode.episode_number}"
                         Log.d("Vision", "Targeting: $target")
-                        scrapeTargetUrl = target
-                        isScraping = true
+                        
+                        // Permettre l'édition du lien avant de scraper
+                        urlToEdit = target
+                        showUrlEditor = true
                     }
                 )
                 
@@ -264,7 +329,7 @@ fun HeadlessScraper(url: String, onVideoFound: (String) -> Unit, onError: () -> 
 }
 
 // --- VIDEO PLAYER ---
-@OptIn(UnstableApi::class)
+@SuppressLint("UnsafeOptInUsageError")
 @Composable
 fun VideoPlayerScreen(url: String, onClose: () -> Unit) {
     val context = LocalContext.current
@@ -308,7 +373,7 @@ fun VideoPlayerScreen(url: String, onClose: () -> Unit) {
 // --- HOME SCREEN (Unchanged Logic, just context passing) ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(navController: NavController) {
+fun HomeScreen(navController: NavController, onOpenSettings: () -> Unit) {
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<MediaItem>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
@@ -317,7 +382,16 @@ fun HomeScreen(navController: NavController) {
     Column(
         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(16.dp)
     ) {
-        Text("VISION", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("VISION", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            IconButton(onClick = onOpenSettings) {
+                Text("⚙️", style = MaterialTheme.typography.headlineSmall)
+            }
+        }
         
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -400,6 +474,7 @@ fun MediaCard(item: MediaItem, onClick: () -> Unit) {
 }
 
 // --- DETAIL SCREEN ---
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailScreen(
     navController: NavController, 
@@ -407,6 +482,7 @@ fun DetailScreen(
     id: Int, 
     title: String, 
     posterPath: String,
+    baseUrl: String,
     onPlayEpisode: (Episode, Int) -> Unit
 ) {
     var seasons by remember { mutableStateOf<List<Season>>(emptyList()) }
